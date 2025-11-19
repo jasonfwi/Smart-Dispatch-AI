@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Dispatch AI | Technician Assignment System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">
+                <img src="{{ url_for('static', filename='images/frontier-logo.webp') }}" alt="Frontier" class="logo-image">
+                <h1>Smart Dispatch AI</h1>
+            </div>
+            <div class="header-status">
+                <span class="db-mode-badge" id="dbModeBadge" title="Database Mode">
+                    <i class="fas fa-database"></i> <span id="dbModeText">Loading...</span>
+                </span>
+                <span class="status-badge" id="statusBadge">
+                    <i class="fas fa-circle-notch fa-spin"></i> Initializing...
+                </span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="main-container">
+        <!-- Tab Navigation -->
+        <div class="tabs-container">
+            <div class="tabs-nav">
+                <button class="tab-btn" onclick="switchTab('capacity')" data-tab="capacity">
+                    <i class="fas fa-chart-bar"></i> Capacity
+                </button>
+                <button class="tab-btn" onclick="switchTab('pending')" data-tab="pending">
+                    <i class="fas fa-clock"></i> Pending <span id="pendingCountBadge" class="tab-badge" style="display: none;">0</span>
+                </button>
+                <button class="tab-btn active" onclick="switchTab('queries')" data-tab="queries">
+                    <i class="fas fa-search"></i> Search Dispatches
+                </button>
+                <button class="tab-btn" onclick="switchTab('technician')" data-tab="technician">
+                    <i class="fas fa-users"></i> Technicians
+                </button>
+                <button class="tab-btn" onclick="switchTab('create')" data-tab="create">
+                    <i class="fas fa-plus-circle"></i> Create Dispatch
+                </button>
+                <button class="tab-btn" onclick="switchTab('autoassign')" data-tab="autoassign">
+                    <i class="fas fa-robot"></i> Auto-Assignment
+                </button>
+                <button class="tab-btn" onclick="switchTab('techcalendar')" data-tab="techcalendar">
+                    <i class="fas fa-calendar-alt"></i> Technician Calendar
+                </button>
+            </div>
+        </div>
+
+        <!-- Tab Content Panels -->
+        <div class="tabs-content">
+            <!-- Capacity Tab -->
+            <div class="tab-panel" id="tab-capacity">
+                <div class="tab-panel-content">
+                    <h2><i class="fas fa-chart-bar"></i> Capacity Management</h2>
+                    <div class="form-section">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="capState">State <span style="color: red;">*</span></label>
+                                <select id="capState" onchange="onCapStateChange()" required>
+                                    <option value="">-- Select State --</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="capCity">City (Optional)</label>
+                                <select id="capCity">
+                                    <option value="">-- All Cities --</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="capDate">Date</label>
+                                <input type="date" id="capDate" min="">
+                            </div>
+                        </div>
+                        <div class="form-actions">
+                            <button class="btn btn-info" onclick="checkCapacity()">
+                                <i class="fas fa-search"></i> Check Capacity
+                            </button>
+                        </div>
+                    </div>
+                    <div id="capacityResults" class="results-section"></div>
+                </div>
+            </div>
+
+            <!-- Pending Tab -->
+            <div class="tab-panel" id="tab-pending">
+                <div class="tab-panel-content">
+                    <h2><i class="fas fa-clock"></i> Pending Dispatches</h2>
+                    <div class="form-section">
+                        <div class="form-actions">
+                            <button class="btn btn-info" onclick="refreshPending()">
+                                <i class="fas fa-sync"></i> Refresh Pending
+                            </button>
+                            <button class="btn btn-success" onclick="commitPending()">
+                                <i class="fas fa-save"></i> Commit to Database
+                            </button>
+                            <button class="btn btn-danger" onclick="clearPending()">
+                                <i class="fas fa-trash"></i> Clear All (Rollback)
+                            </button>
+                        </div>
+                    </div>
+                    <div id="pendingList" class="results-section">
+                        <p class="text-muted">No pending dispatches</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Search Dispatches Tab -->
+            <div class="tab-panel active" id="tab-queries">
+                <div class="tab-panel-content">
+                    <h2><i class="fas fa-search"></i> Search Dispatches</h2>
+                    
+                    <!-- Filters and Actions Section -->
+                    <div class="form-section">
+                        <h3><i class="fas fa-filter"></i> Search Filters & Actions</h3>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="dispatchId">Dispatch ID</label>
+                                <input type="number" id="dispatchId" placeholder="e.g., 12345">
+                            </div>
+                            <div class="form-group">
+                                <label for="startDate">Start Date (optional)</label>
+                                <input type="date" id="startDate">
+                            </div>
+                            <div class="form-group">
+                                <label for="endDate">End Date (optional)</label>
+                                <input type="date" id="endDate">
+                            </div>
+                            <div class="form-group">
+                                <label for="state">State (optional)</label>
+                                <select id="state" onchange="onStateChange()">
+                                    <option value="">-- All States --</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="city">City (optional)</label>
+                                <select id="city" onchange="onCityChange()">
+                                    <option value="">-- All Cities --</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-actions" style="margin-top: var(--spacing-md);">
+                            <button class="btn btn-primary" onclick="viewUnassigned()" type="button">
+                                <i class="fas fa-clipboard-list"></i> View Unassigned Dispatches
+                            </button>
+                            <button class="btn btn-primary" onclick="findDispatches()" type="button">
+                                <i class="fas fa-search"></i> Find Available Dispatches
+                            </button>
+                            <button class="btn btn-secondary" onclick="clearAll()" type="button">
+                                <i class="fas fa-broom"></i> Clear All Fields
+                            </button>
+                        </div>
+                        <p class="helper-text" style="margin-top: var(--spacing-md);">
+                            <i class="fas fa-info-circle"></i> Select filters above (optional), then click a query button to execute.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Technician Tab -->
+            <div class="tab-panel" id="tab-technician">
+                <div class="tab-panel-content">
+                    <h2><i class="fas fa-users"></i> Technician Queries</h2>
+                    
+                    <!-- Filters and Actions Section -->
+                    <div class="form-section">
+                        <h3><i class="fas fa-filter"></i> Search Filters & Actions</h3>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="techIdTech">Technician ID</label>
+                                <input type="text" id="techIdTech" placeholder="e.g., T900080">
+                            </div>
+                            <div class="form-group">
+                                <label for="techDispatchId">Dispatch ID</label>
+                                <input type="number" id="techDispatchId" placeholder="e.g., 12345">
+                            </div>
+                            <div class="form-group">
+                                <label for="techDate">Date (optional)</label>
+                                <input type="date" id="techDate">
+                            </div>
+                            <div class="form-group">
+                                <label for="techStartDate">Start Date (optional)</label>
+                                <input type="date" id="techStartDate">
+                            </div>
+                            <div class="form-group">
+                                <label for="techEndDate">End Date (optional)</label>
+                                <input type="date" id="techEndDate">
+                            </div>
+                            <div class="form-group">
+                                <label for="techState">State (optional)</label>
+                                <select id="techState" onchange="onTechStateChange()">
+                                    <option value="">-- All States --</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="techCity">City (optional)</label>
+                                <select id="techCity" onchange="onTechCityChange()">
+                                    <option value="">-- All Cities --</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-actions" style="margin-top: var(--spacing-md);">
+                            <button class="btn btn-primary" onclick="checkAssignments()" type="button">
+                                <i class="fas fa-user-clock"></i> Check Technician Workload
+                            </button>
+                            <button class="btn btn-primary" onclick="checkAvailability()" type="button">
+                                <i class="fas fa-calendar-check"></i> Check Technician Availability
+                            </button>
+                            <button class="btn btn-primary" onclick="findTechnicians()" type="button">
+                                <i class="fas fa-users"></i> Find Available Technicians
+                            </button>
+                            <button class="btn btn-primary" onclick="listAvailable()" type="button">
+                                <i class="fas fa-list"></i> List Available (Date)
+                            </button>
+                            <button class="btn btn-primary" onclick="availabilitySummary()" type="button">
+                                <i class="fas fa-chart-bar"></i> Availability Summary (Range)
+                            </button>
+                            <button class="btn btn-secondary" onclick="clearTechFields()" type="button">
+                                <i class="fas fa-broom"></i> Clear All Fields
+                            </button>
+                        </div>
+                        <p class="helper-text" style="margin-top: var(--spacing-md);">
+                            <i class="fas fa-info-circle"></i> Select filters above (optional), then click a query button to execute.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Create Dispatch Tab -->
+            <div class="tab-panel" id="tab-create">
+                <div class="tab-panel-content">
+                    <h2><i class="fas fa-plus-circle"></i> Create New Dispatch</h2>
+                    
+                    <!-- Dispatch Creation Form -->
+                    <div class="form-section">
+                        <h3><i class="fas fa-file-alt"></i> Dispatch Details</h3>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="createState">State *</label>
+                                <select id="createState" onchange="onCreateStateChange()" required>
+                                    <option value="">-- Select State --</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="createCity">City *</label>
+                                <select id="createCity" onchange="onCreateCityChange()" required>
+                                    <option value="">-- Select City --</option>
+                                </select>
+                            </div>
+                            <div class="form-group form-group-full">
+                                <label for="createAddress">Address *</label>
+                                <input type="text" id="createAddress" list="addressList" 
+                                       placeholder="Type to search addresses..." 
+                                       oninput="onAddressTyping()" required>
+                                <datalist id="addressList"></datalist>
+                            </div>
+                            <div class="form-group">
+                                <label for="createDate">Date *</label>
+                                <input type="date" id="createDate" min="" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="createTime">Time (24hr) *</label>
+                                <input type="time" id="createTime" value="10:00" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="createDuration">Duration (minutes) *</label>
+                                <input type="number" id="createDuration" value="120" min="1" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="createSkill">Required Skill *</label>
+                                <select id="createSkill" required>
+                                    <option value="">-- Select Skill --</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="createPriority">Priority *</label>
+                                <select id="createPriority" required>
+                                    <option value="">-- Select Priority --</option>
+                                </select>
+                            </div>
+                            <div class="form-group form-group-full">
+                                <label for="createReason">Reason (Optional)</label>
+                                <input type="text" id="createReason" placeholder="Not stored in database">
+                            </div>
+                        </div>
+                        <div class="form-options">
+                            <label>
+                                <input type="checkbox" id="createAutoAssign" checked>
+                                Auto-assign best technician
+                            </label>
+                            <label>
+                                <input type="checkbox" id="createCommit">
+                                Commit to database immediately
+                            </label>
+                        </div>
+                        <div class="form-actions">
+                            <button class="btn btn-success" onclick="createDispatch()">
+                                <i class="fas fa-check"></i> Create Dispatch
+                            </button>
+                            <button class="btn btn-info" onclick="checkCapacityForDispatch()">
+                                <i class="fas fa-chart-bar"></i> Check Capacity First
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Configuration (hidden by default) -->
+                    <div class="form-section" id="configSection" style="display: none;">
+                        <h3>
+                            <i class="fas fa-cog"></i> Configuration
+                            <button class="btn btn-sm btn-secondary" onclick="toggleConfigSection()" style="float: right; margin-top: -5px;">
+                                <i class="fas fa-times"></i> Hide
+                            </button>
+                        </h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="maxRange">Max Range (km)</label>
+                                <input type="number" id="maxRange" value="15.0" step="0.5">
+                            </div>
+                            <div class="form-group">
+                                <button class="btn btn-secondary" onclick="reinitialize()">
+                                    <i class="fas fa-sync"></i> Reinitialize
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-section" style="text-align: center;">
+                        <button class="btn btn-link" onclick="toggleConfigSection()" style="color: var(--brand-gray);">
+                            <i class="fas fa-cog"></i> Show Configuration
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Auto-Assignment Tab -->
+            <div class="tab-panel" id="tab-autoassign">
+                <div class="tab-panel-content">
+                    <h2><i class="fas fa-robot"></i> Auto-Assignment</h2>
+                    <div class="form-section">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="assignState">State (Optional)</label>
+                                <select id="assignState" onchange="onAssignStateChange()">
+                                    <option value="">-- All States --</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="assignCity">City (Optional)</label>
+                                <select id="assignCity">
+                                    <option value="">-- All Cities --</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="assignDate">Date *</label>
+                                <input type="date" id="assignDate" min="" required>
+                            </div>
+                        </div>
+                        <div class="form-options">
+                            <label>
+                                <input type="checkbox" id="useScoring" checked>
+                                Use Scoring Algorithm (priority, skill, utilization, history, distance, travel)
+                            </label>
+                            <label>
+                                <input type="checkbox" id="rangeExpansion" checked>
+                                Enable Range Expansion (search up to 22.5km for 20%+ better matches)
+                            </label>
+                        </div>
+                        <p class="helper-text" style="margin-top: var(--spacing-sm); color: var(--color-text-muted);">
+                            <i class="fas fa-info-circle"></i> Auto-assignment runs as a dry run first. Review and commit assignments in the results modal.
+                        </p>
+                        <div class="form-actions">
+                            <button class="btn btn-success" onclick="runAutoAssign()">
+                                <i class="fas fa-bolt"></i> Run Auto-Assignment
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Technician Calendar Tab -->
+            <div class="tab-panel" id="tab-techcalendar">
+                <div class="tab-panel-content">
+                    <h2><i class="fas fa-calendar-alt"></i> Technician Calendar Management</h2>
+                    
+                    <!-- Query Options -->
+                    <div class="form-section">
+                        <h3><i class="fas fa-filter"></i> Search Options</h3>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="calTechId">Technician ID</label>
+                                <input type="text" id="calTechId" placeholder="e.g., T900080">
+                            </div>
+                            <div class="form-group">
+                                <label for="calTechName">Technician Name</label>
+                                <input type="text" id="calTechName" placeholder="e.g., John Smith">
+                            </div>
+                            <div class="form-group">
+                                <label for="calState">State (Optional)</label>
+                                <select id="calState" onchange="onCalStateChange()">
+                                    <option value="">-- All States --</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="calCity">City (Optional)</label>
+                                <select id="calCity" onchange="onCalCityChange()">
+                                    <option value="">-- All Cities --</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="calStartDate">Start Date (Optional)</label>
+                                <input type="date" id="calStartDate">
+                            </div>
+                            <div class="form-group">
+                                <label for="calEndDate">End Date (Optional)</label>
+                                <input type="date" id="calEndDate">
+                            </div>
+                        </div>
+                        <div class="form-actions" style="margin-top: var(--spacing-md);">
+                            <button class="btn btn-primary" onclick="queryTechCalendar()" type="button">
+                                <i class="fas fa-search"></i> Query by ID/Name
+                            </button>
+                            <button class="btn btn-primary" onclick="queryTechByLocation()" type="button">
+                                <i class="fas fa-map-marker-alt"></i> Query by Location
+                            </button>
+                            <button class="btn btn-secondary" onclick="clearCalFields()" type="button">
+                                <i class="fas fa-broom"></i> Clear All Fields
+                            </button>
+                        </div>
+                        <p class="helper-text" style="margin-top: var(--spacing-md);">
+                            <i class="fas fa-info-circle"></i> Enter Technician ID or Name to view/edit calendar, or use City/State to select from a list.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content (Always Visible) -->
+        <main class="main-content">
+
+            <!-- System Messages -->
+            <section class="panel system-messages minimized" id="systemMessagesPanel">
+                <div class="panel-header">
+                    <h2><i class="fas fa-terminal"></i> System Messages</h2>
+                    <div class="panel-header-actions">
+                        <button class="btn btn-sm btn-secondary" onclick="toggleSystemMessages()" title="Minimize/Maximize">
+                            <i class="fas fa-chevron-down" id="systemMessagesToggleIcon"></i>
+                        </button>
+                        <button class="btn btn-sm btn-secondary" onclick="clearMessages()">
+                            <i class="fas fa-trash"></i> Clear
+                        </button>
+                    </div>
+                </div>
+                <div class="panel-content" id="systemMessagesContent">
+                    <div id="systemMessages" class="messages-container"></div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="loading-spinner">
+            <i class="fas fa-circle-notch fa-spin fa-3x"></i>
+            <p>Processing...</p>
+        </div>
+    </div>
+
+    <!-- Edit Modal -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-edit"></i> Edit Field</h3>
+                <button class="modal-close" onclick="closeEditModal()" title="Close (Esc)">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label id="editLabel" style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; font-weight: 600;">
+                        <i class="fas fa-tag"></i> Field Name
+                    </label>
+                    <input type="text" id="editInput" class="modal-input" placeholder="Enter value...">
+                    <small id="editHelp" class="form-text text-muted" style="display: block; margin-top: 0.5rem; font-size: 0.875rem;">
+                        Press Enter to save, Esc to cancel
+                    </small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeEditModal()">
+                    <i class="fas fa-times"></i> Cancel
+                </button>
+                <button class="btn btn-primary" onclick="saveEdit()">
+                    <i class="fas fa-save"></i> Save Changes
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Results Modal -->
+    <div id="resultsModal" class="modal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h3 id="resultsModalTitle">Query Results</h3>
+                <button class="modal-close" onclick="closeResultsModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="resultsModalContent"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeResultsModal()">Close</button>
+                <button class="btn btn-primary" onclick="exportResults()" id="exportResultsBtn" style="display: none;">
+                    <i class="fas fa-download"></i> Export CSV
+                </button>
+                <button class="btn btn-success" onclick="commitAssignments()" id="commitAssignmentsBtn" style="display: none;">
+                    <i class="fas fa-check-circle"></i> Commit Assignments
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Technician List Modal (for City/State queries) -->
+    <div id="techListModal" class="modal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h3 id="techListModalTitle">Select Technician</h3>
+                <button class="modal-close" onclick="closeTechListModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="techListModalContent"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeTechListModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Technician Calendar Form Modal -->
+    <div id="techCalendarModal" class="modal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h3 id="techCalendarModalTitle">Technician Calendar</h3>
+                <button class="modal-close" onclick="closeTechCalendarModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="techCalendarModalContent">
+                    <form id="techCalendarForm">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="calFormTechId">Technician ID</label>
+                                <input type="text" id="calFormTechId" readonly class="read-only-field">
+                            </div>
+                            <div class="form-group">
+                                <label for="calFormTechName">Technician Name</label>
+                                <input type="text" id="calFormTechName" readonly class="read-only-field">
+                            </div>
+                            <div class="form-group">
+                                <label for="calFormDate">Date</label>
+                                <input type="date" id="calFormDate" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="calFormAvailable">Available</label>
+                                <select id="calFormAvailable" required>
+                                    <option value="1">Yes</option>
+                                    <option value="0">No</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="calFormStartTime">Start Time</label>
+                                <input type="time" id="calFormStartTime">
+                            </div>
+                            <div class="form-group">
+                                <label for="calFormEndTime">End Time</label>
+                                <input type="time" id="calFormEndTime">
+                            </div>
+                            <div class="form-group">
+                                <label for="calFormMaxAssignments">Max Assignments (hours)</label>
+                                <input type="number" id="calFormMaxAssignments" min="0" step="1">
+                            </div>
+                            <div class="form-group">
+                                <label for="calFormCity">City</label>
+                                <input type="text" id="calFormCity" placeholder="e.g., Dallas">
+                            </div>
+                            <div class="form-group">
+                                <label for="calFormState">State</label>
+                                <input type="text" id="calFormState" placeholder="e.g., TX" maxlength="2">
+                            </div>
+                            <div class="form-group form-group-full">
+                                <label>Update Type</label>
+                                <div class="form-options" style="margin-top: 8px;">
+                                    <label>
+                                        <input type="radio" name="calUpdateType" id="calUpdateSingleDay" value="single" checked>
+                                        Single Day Update
+                                    </label>
+                                    <label>
+                                        <input type="radio" name="calUpdateType" id="calUpdatePermanent" value="permanent">
+                                        Permanent Move
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="form-group form-group-full">
+                                <label for="calFormReason">Reason (if unavailable)</label>
+                                <input type="text" id="calFormReason" placeholder="Enter reason for unavailability">
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeTechCalendarModal()">Cancel</button>
+                <button class="btn btn-success" onclick="saveTechCalendar()">
+                    <i class="fas fa-save"></i> Save Changes
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

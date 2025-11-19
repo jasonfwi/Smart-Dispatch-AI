@@ -1,0 +1,12 @@
+# Smart Dispatch AI - Python Requirements
+# Install with: pip install -r requirements.txt
+
+# Web Framework
+Flask>=3.0.0
+Werkzeug>=3.0.0
+
+# Data Processing
+pandas>=2.0.0
+
+# Note: SQLite is built-in to Python, no additional driver needed
+# Note: numpy is not required - pandas handles all data operations
