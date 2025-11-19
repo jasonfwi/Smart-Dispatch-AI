@@ -20,7 +20,6 @@ wheels/
 .installed.cfg
 *.egg
 MANIFEST
-
 # Virtual Environment
 venv/
 env/
@@ -39,7 +38,7 @@ ENV/
 Thumbs.db
 
 # Database (ignore the actual database file, but commit the schema)
-local_dispatch.db
+dispatch.db
 *.db-journal
 
 # Logs

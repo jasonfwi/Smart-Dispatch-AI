@@ -20,7 +20,7 @@ from constants import (
     MINUTES_PER_HOUR, round_minutes_to_nearest_hour,
     RANGE_EXPANSION_FACTOR, RANGE_EXPANSION_THRESHOLD
 )
-from local_db import LocalDatabase, DEFAULT_DB_PATH
+from populate_db import LocalDatabase, DEFAULT_DB_PATH
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +42,7 @@ class SmartDispatchAI:
         Args:
             max_range_km: Maximum search radius in kilometers
             scoring_weights: Custom scoring weights (optional)
-            db_path: Path to SQLite database (default: local_dispatch.db)
+            db_path: Path to SQLite database (default: dispatch.db)
         """
         logger.info("Initializing Smart Dispatch AI (Local Mode)...")
         self.max_range_km = max_range_km

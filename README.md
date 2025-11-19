@@ -19,10 +19,10 @@ pip install -r requirements.txt
 
 ```bash
 # Import CSV files to database
-python local_db.py import
+python populate_db.py import
 
 # Check import status
-python local_db.py status
+python populate_db.py status
 ```
 
 The import expects CSV files in `data/csv_exports/`:
@@ -69,10 +69,10 @@ Then open your browser to: **http://localhost:5001**
 Smart-Dispatch-AI/
 ├── app.py                      # Flask web application
 ├── dispatch.py                 # Core optimizer logic
-├── local_db.py                 # SQLite database utilities
+├── populate_db.py                 # SQLite database utilities
 ├── constants.py                # Shared constants and data models
 ├── requirements.txt            # Python dependencies
-├── local_dispatch.db           # SQLite database (created on first run)
+├── dispatch.db           # SQLite database (created on first run)
 ├── data/
 │   └── csv_exports/            # CSV data files
 │       ├── current_dispatches.csv
@@ -235,18 +235,18 @@ results = optimizer.auto_assign_dispatches("2025-11-17", dry_run=False)
 
 ```bash
 # Import CSV files (keeps existing data)
-python local_db.py import
+python populate_db.py import
 
 # Force re-import (clears existing data first)
-python local_db.py import --force
+python populate_db.py import --force
 
 # Check import status
-python local_db.py status
+python populate_db.py status
 ```
 
 ### Database Schema
 
-The SQLite database (`local_dispatch.db`) contains:
+The SQLite database (`dispatch.db`) contains:
 
 1. **current_dispatches** - Active dispatch requests
    - Dispatch ID, priority, location, skills, appointment date/time
@@ -296,19 +296,19 @@ MAX_RANGE_KM = 15.0  # Change to desired value
 **Database not found:**
 ```bash
 # Ensure database exists
-python local_db.py status
+python populate_db.py status
 
 # If missing, import data
-python local_db.py import
+python populate_db.py import
 ```
 
 **Database appears empty:**
 ```bash
 # Check import status
-python local_db.py status
+python populate_db.py status
 
 # Re-import data
-python local_db.py import --force
+python populate_db.py import --force
 ```
 
 ### Web Application Issues
@@ -319,7 +319,7 @@ python local_db.py import --force
 
 **No data in results:**
 - Check system messages for errors
-- Verify database contains data: `python local_db.py status`
+- Verify database contains data: `python populate_db.py status`
 
 **Server won't start:**
 ```bash
@@ -387,7 +387,7 @@ For issues or questions:
 2. Check browser console (F12)
 3. Check Flask server logs
 4. Review this README
-5. Verify database status: `python local_db.py status`
+5. Verify database status: `python populate_db.py status`
 
 ## 🎉 You're All Set!
 

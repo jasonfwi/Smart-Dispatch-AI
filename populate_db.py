@@ -1,8 +1,11 @@
 """
-Local Database Module - SQLite-based local storage for Smart Dispatch AI
+Database Population Module - SQLite database management for Smart Dispatch AI
 
-This module provides local database functionality using SQLite for
-dispatch optimization and technician management.
+This module provides database functionality including:
+- Database initialization and schema management
+- CSV import/export functionality
+- Command-line interface for data population
+- SQLite operations for dispatch optimization and technician management
 """
 
 import sqlite3
@@ -15,8 +18,8 @@ import pandas as pd
 
 logger = logging.getLogger(__name__)
 
-# Default local database path
-DEFAULT_DB_PATH = Path(__file__).parent / "local_dispatch.db"
+# Default database path
+DEFAULT_DB_PATH = Path(__file__).parent / "dispatch.db"
 
 
 class TransactionContext:
@@ -58,7 +61,7 @@ class LocalDatabase:
         Initialize local database connection.
         
         Args:
-            db_path: Path to SQLite database file (default: local_dispatch.db)
+            db_path: Path to SQLite database file (default: dispatch.db)
         """
         self.db_path = Path(db_path) if db_path else DEFAULT_DB_PATH
         self.conn: Optional[sqlite3.Connection] = None
@@ -494,15 +497,15 @@ def main():
     Command-line interface for database operations.
     
     Usage:
-        python local_db.py import [--force]  # Import CSV files to database
-        python local_db.py status            # Show import status
+        python populate_db.py import [--force]  # Import CSV files to database
+        python populate_db.py status            # Show import status
     """
     import sys
     
     if len(sys.argv) < 2:
         print("Usage:")
-        print("  python local_db.py import [--force]  # Import CSV files to database")
-        print("  python local_db.py status            # Show import status")
+        print("  python populate_db.py import [--force]  # Import CSV files to database")
+        print("  python populate_db.py status            # Show import status")
         return 1
     
     command = sys.argv[1].lower()
