@@ -39,6 +39,24 @@ python app.py
 
 Then open your browser to: **http://localhost:5001**
 
+### 4. Run Tests (Optional)
+
+```bash
+# Install test dependencies
+pip install pytest pytest-cov
+
+# Run all tests
+python run_tests.py
+
+# Or use pytest directly
+pytest -v
+
+# Run with coverage
+pytest --cov=. --cov-report=html
+```
+
+See [TESTING.md](TESTING.md) for comprehensive testing documentation.
+
 ## ✨ Features
 
 ### 🎨 Modern Web Interface

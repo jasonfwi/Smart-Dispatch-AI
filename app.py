@@ -97,9 +97,20 @@ def cache_result(cache_key: str, ttl_seconds: int = 300):
 
 
 def df_to_dict(df) -> Dict[str, Any]:
-    """Efficiently convert Spark DataFrame or pandas DataFrame to dict format."""
+    """Efficiently convert Spark DataFrame, pandas DataFrame, or list to dict format."""
+    # Check if it's already a list of dicts (from SQLite query)
+    if isinstance(df, list):
+        if len(df) > 0:
+            columns = list(df[0].keys())
+        else:
+            columns = []
+        return {
+            'data': df,
+            'columns': columns,
+            'count': len(df)
+        }
     # Check if it's a pandas DataFrame
-    if hasattr(df, 'to_dict') and hasattr(df, 'columns') and not hasattr(df, 'collect'):
+    elif hasattr(df, 'to_dict') and hasattr(df, 'columns') and not hasattr(df, 'collect'):
         # It's a pandas DataFrame
         rows = df.to_dict('records')
         columns = list(df.columns)
