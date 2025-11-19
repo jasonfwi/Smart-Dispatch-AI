@@ -126,9 +126,6 @@ async function initialize() {
             const techEndDateEl = document.getElementById('techEndDate');
             if (techEndDateEl) techEndDateEl.min = tomorrowStr;
             
-            // Refresh pending dispatches count
-            refreshPending();
-            
             logMessage(`✅ ${data.message}`, 'success');
             logMessage(`📍 Loaded ${data.states.length - 1} states`, 'success');
             logMessage(`🏙️ Loaded ${data.cities.length - 1} cities`, 'success');
@@ -599,135 +596,9 @@ async function checkCapacity() {
 }
 
 // ================================
-// PENDING DISPATCHES FUNCTIONS
+// PENDING DISPATCHES REMOVED
+// Auto-commit on save implemented
 // ================================
-
-async function refreshPending() {
-    if (!checkInitialized()) return;
-    
-    try {
-        showLoading(true);
-        const response = await fetch('/api/dispatches/pending');
-        const data = await response.json();
-        
-        if (data.success) {
-            const pending = data.pending || [];
-            const count = pending.length;
-            
-            // Update badge in tab and pending section
-            updatePendingBadge(count);
-            const badge = document.getElementById('pendingCount');
-            if (badge) {
-                if (count > 0) {
-                    badge.textContent = count;
-                    badge.style.display = 'inline-block';
-                } else {
-                    badge.style.display = 'none';
-                }
-            }
-            
-            // Display pending list
-            const listDiv = document.getElementById('pendingList');
-            if (listDiv) {
-                if (count === 0) {
-                    listDiv.innerHTML = '<p class="text-muted">No pending dispatches</p>';
-                } else {
-                    let html = '<table class="pending-table" style="width: 100%; font-size: 12px;">';
-                    html += '<thead><tr><th>ID</th><th>Address</th><th>City</th><th>State</th><th>Date</th><th>Time</th><th>Priority</th></tr></thead><tbody>';
-                    pending.forEach(dispatch => {
-                        html += `<tr>
-                            <td>${dispatch.dispatch_id || 'N/A'}</td>
-                            <td>${dispatch.address || 'N/A'}</td>
-                            <td>${dispatch.city || 'N/A'}</td>
-                            <td>${dispatch.state || 'N/A'}</td>
-                            <td>${dispatch.date || 'N/A'}</td>
-                            <td>${dispatch.time || 'N/A'}</td>
-                            <td>${dispatch.priority || 'N/A'}</td>
-                        </tr>`;
-                    });
-                    html += '</tbody></table>';
-                    listDiv.innerHTML = html;
-                }
-            }
-            
-            logMessage(`✅ Refreshed pending dispatches: ${count} found`, 'success');
-        } else {
-            logMessage(`❌ Error: ${data.error}`, 'error');
-        }
-    } catch (error) {
-        logMessage(`❌ Error: ${error.message}`, 'error');
-        console.error(error);
-    } finally {
-        showLoading(false);
-    }
-}
-
-async function commitPending() {
-    if (!checkInitialized()) return;
-    
-    if (!confirm('Are you sure you want to commit all pending dispatches to the database?')) {
-        return;
-    }
-    
-    try {
-        showLoading(true);
-        logMessage('💾 Committing pending dispatches...', 'header');
-        
-        const response = await fetch('/api/dispatches/commit', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'}
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            logMessage(`✅ Successfully committed ${data.committed || 0} dispatches`, 'success');
-            await refreshPending();
-        } else {
-            logMessage(`❌ Error: ${data.error}`, 'error');
-        }
-    } catch (error) {
-        logMessage(`❌ Error: ${error.message}`, 'error');
-        console.error(error);
-    } finally {
-        showLoading(false);
-    }
-}
-
-async function clearPending() {
-    if (!checkInitialized()) return;
-    
-    if (!confirm('Are you sure you want to clear all pending dispatches? This cannot be undone.')) {
-        return;
-    }
-    
-    try {
-        showLoading(true);
-        logMessage('🗑️ Clearing pending dispatches...', 'header');
-        
-        const response = await fetch('/api/dispatches/pending/clear', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'}
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            logMessage('✅ All pending dispatches cleared', 'success');
-            const badge = document.getElementById('pendingCount');
-            if (badge) badge.style.display = 'none';
-            const listDiv = document.getElementById('pendingList');
-            if (listDiv) listDiv.innerHTML = '<p class="text-muted">No pending dispatches</p>';
-        } else {
-            logMessage(`❌ Error: ${data.error}`, 'error');
-        }
-    } catch (error) {
-        logMessage(`❌ Error: ${error.message}`, 'error');
-        console.error(error);
-    } finally {
-        showLoading(false);
-    }
-}
 
 // ================================
 // AUTO-ASSIGNMENT FUNCTIONS
@@ -2503,9 +2374,6 @@ async function commitAssignments() {
             // Close modal and refresh
             closeResultsModal();
             state.autoAssignData = null;
-            
-            // Refresh pending count
-            refreshPending();
         } else {
             logMessage(`❌ Error committing assignments: ${data.error}`, 'error');
         }
@@ -3063,18 +2931,268 @@ function restoreSelectedTab() {
     switchTab(savedTab);
 }
 
-// Update pending count badge
-function updatePendingBadge(count) {
-    const badge = document.getElementById('pendingCountBadge');
-    if (badge) {
-        if (count > 0) {
-            badge.textContent = count;
-            badge.style.display = 'inline-block';
+// ================================
+// DATABASE MAINTENANCE FUNCTIONS
+// ================================
+
+async function loadMaintenanceStats() {
+    if (!checkInitialized()) return;
+    
+    try {
+        showLoading(true);
+        const response = await fetch('/api/maintenance/stats');
+        const data = await response.json();
+        
+        if (data.success) {
+            const stats = data.stats;
+            
+            // Update stat cards
+            document.getElementById('statTotalChanges').textContent = stats.total_changes.toLocaleString();
+            document.getElementById('statRecentChanges').textContent = stats.recent_changes.toLocaleString();
+            document.getElementById('statInserts').textContent = (stats.by_operation.INSERT || 0).toLocaleString();
+            document.getElementById('statUpdates').textContent = (stats.by_operation.UPDATE || 0).toLocaleString();
+            document.getElementById('statDeletes').textContent = (stats.by_operation.DELETE || 0).toLocaleString();
+            
+            logMessage('✅ Statistics refreshed', 'success');
         } else {
-            badge.style.display = 'none';
+            logMessage(`❌ Error: ${data.error}`, 'error');
         }
+    } catch (error) {
+        logMessage(`❌ Error: ${error.message}`, 'error');
+        console.error(error);
+    } finally {
+        showLoading(false);
     }
 }
+
+async function loadChangeHistory() {
+    if (!checkInitialized()) return;
+    
+    try {
+        showLoading(true);
+        logMessage('🔍 Loading change history...', 'header');
+        
+        const table_name = document.getElementById('historyTable').value || null;
+        const start_date = document.getElementById('historyStartDate').value || null;
+        const end_date = document.getElementById('historyEndDate').value || null;
+        const limit = parseInt(document.getElementById('historyLimit').value) || 100;
+        
+        const response = await fetch('/api/maintenance/history', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                table_name,
+                start_date: start_date ? start_date + 'T00:00:00' : null,
+                end_date: end_date ? end_date + 'T23:59:59' : null,
+                limit,
+                offset: 0
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            displayChangeHistory(data.history);
+            logMessage(`✅ Found ${data.count} change(s)`, 'success');
+        } else {
+            logMessage(`❌ Error: ${data.error}`, 'error');
+        }
+    } catch (error) {
+        logMessage(`❌ Error: ${error.message}`, 'error');
+        console.error(error);
+    } finally {
+        showLoading(false);
+    }
+}
+
+function displayChangeHistory(history) {
+    const resultsDiv = document.getElementById('historyResults');
+    
+    if (!history || history.length === 0) {
+        resultsDiv.innerHTML = '<p class="text-muted">No change history found</p>';
+        return;
+    }
+    
+    let html = '<div style="overflow-x: auto;">';
+    html += '<table class="results-table" style="width: 100%; font-size: 11px;">';
+    html += '<thead><tr>';
+    html += '<th>Change ID</th>';
+    html += '<th>Timestamp</th>';
+    html += '<th>Table</th>';
+    html += '<th>Operation</th>';
+    html += '<th>Record ID</th>';
+    html += '<th>User Action</th>';
+    html += '<th>Can Rollback</th>';
+    html += '<th>Actions</th>';
+    html += '</tr></thead><tbody>';
+    
+    history.forEach(change => {
+        const timestamp = new Date(change.timestamp).toLocaleString();
+        const canRollback = change.can_rollback === 1;
+        const operationColor = {
+            'INSERT': '#ffc107',
+            'UPDATE': '#17a2b8',
+            'DELETE': '#dc3545',
+            'ROLLBACK_INSERT': '#6c757d',
+            'ROLLBACK_UPDATE': '#6c757d',
+            'ROLLBACK_DELETE': '#6c757d'
+        }[change.operation] || '#6c757d';
+        
+        html += '<tr>';
+        html += `<td>${change.change_id}</td>`;
+        html += `<td style="white-space: nowrap;">${timestamp}</td>`;
+        html += `<td>${change.table_name}</td>`;
+        html += `<td><span style="background: ${operationColor}; color: white; padding: 2px 6px; border-radius: 3px; font-size: 10px;">${change.operation}</span></td>`;
+        html += `<td>${change.record_id}</td>`;
+        html += `<td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis;">${change.user_action || '-'}</td>`;
+        html += `<td>${canRollback ? '✅ Yes' : '❌ No'}</td>`;
+        html += '<td style="white-space: nowrap;">';
+        
+        if (canRollback) {
+            html += `<button class="btn btn-sm btn-warning" onclick="rollbackChange(${change.change_id})" style="font-size: 10px; padding: 2px 6px; margin-right: 5px;">
+                <i class="fas fa-undo"></i> Rollback
+            </button>`;
+        }
+        
+        html += `<button class="btn btn-sm btn-info" onclick="viewChangeDetails(${change.change_id}, ${JSON.stringify(change).replace(/"/g, '&quot;')})" style="font-size: 10px; padding: 2px 6px;">
+            <i class="fas fa-eye"></i> Details
+        </button>`;
+        
+        html += '</td>';
+        html += '</tr>';
+    });
+    
+    html += '</tbody></table></div>';
+    resultsDiv.innerHTML = html;
+}
+
+function viewChangeDetails(changeId, change) {
+    let details = `Change ID: ${change.change_id}\n`;
+    details += `Timestamp: ${new Date(change.timestamp).toLocaleString()}\n`;
+    details += `Table: ${change.table_name}\n`;
+    details += `Operation: ${change.operation}\n`;
+    details += `Record ID: ${change.record_id}\n`;
+    details += `User Action: ${change.user_action || 'N/A'}\n`;
+    details += `Can Rollback: ${change.can_rollback === 1 ? 'Yes' : 'No'}\n\n`;
+    
+    if (change.old_data) {
+        details += `OLD DATA:\n${JSON.stringify(change.old_data, null, 2)}\n\n`;
+    }
+    
+    if (change.new_data) {
+        details += `NEW DATA:\n${JSON.stringify(change.new_data, null, 2)}`;
+    }
+    
+    alert(details);
+}
+
+async function rollbackChange(changeId) {
+    if (!checkInitialized()) return;
+    
+    if (!confirm(`Are you sure you want to rollback change ${changeId}?\n\nThis will reverse the change and mark it as rolled back.`)) {
+        return;
+    }
+    
+    try {
+        showLoading(true);
+        logMessage(`⏪ Rolling back change ${changeId}...`, 'header');
+        
+        const response = await fetch('/api/maintenance/rollback', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ change_id: changeId })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            logMessage(`✅ ${data.message}`, 'success');
+            // Reload history to show updated state
+            await loadChangeHistory();
+            // Refresh stats
+            await loadMaintenanceStats();
+        } else {
+            logMessage(`❌ Error: ${data.error}`, 'error');
+        }
+    } catch (error) {
+        logMessage(`❌ Error: ${error.message}`, 'error');
+        console.error(error);
+    } finally {
+        showLoading(false);
+    }
+}
+
+async function deleteRecord() {
+    if (!checkInitialized()) return;
+    
+    const table_name = document.getElementById('deleteTable').value;
+    const record_id = document.getElementById('deleteRecordId').value.trim();
+    const reason = document.getElementById('deleteReason').value.trim();
+    
+    if (!table_name) {
+        alert('Please select a table');
+        return;
+    }
+    
+    if (!record_id) {
+        alert('Please enter a record ID');
+        return;
+    }
+    
+    if (!confirm(`⚠️ WARNING ⚠️\n\nAre you sure you want to delete record "${record_id}" from "${table_name}"?\n\nThis action can be rolled back, but should be used with caution.`)) {
+        return;
+    }
+    
+    try {
+        showLoading(true);
+        logMessage(`🗑️ Deleting record ${record_id} from ${table_name}...`, 'header');
+        
+        const response = await fetch('/api/maintenance/delete', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                table_name,
+                record_id,
+                reason: reason || 'User requested deletion'
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            logMessage(`✅ ${data.message}`, 'success');
+            
+            // Clear form
+            document.getElementById('deleteTable').value = '';
+            document.getElementById('deleteRecordId').value = '';
+            document.getElementById('deleteReason').value = '';
+            
+            // Refresh history and stats
+            await loadChangeHistory();
+            await loadMaintenanceStats();
+        } else {
+            logMessage(`❌ Error: ${data.error}`, 'error');
+        }
+    } catch (error) {
+        logMessage(`❌ Error: ${error.message}`, 'error');
+        console.error(error);
+    } finally {
+        showLoading(false);
+    }
+}
+
+function clearHistoryFilters() {
+    document.getElementById('historyTable').value = '';
+    document.getElementById('historyStartDate').value = '';
+    document.getElementById('historyEndDate').value = '';
+    document.getElementById('historyLimit').value = '100';
+    
+    const resultsDiv = document.getElementById('historyResults');
+    resultsDiv.innerHTML = '<p class="text-muted">Use the filters above to search change history</p>';
+    
+    logMessage('🧹 Filters cleared', 'success');
+}
+
 
 function showLoading(show) {
     const overlay = document.getElementById('loadingOverlay');

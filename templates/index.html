@@ -34,9 +34,6 @@
                 <button class="tab-btn" onclick="switchTab('capacity')" data-tab="capacity">
                     <i class="fas fa-chart-bar"></i> Capacity
                 </button>
-                <button class="tab-btn" onclick="switchTab('pending')" data-tab="pending">
-                    <i class="fas fa-clock"></i> Pending <span id="pendingCountBadge" class="tab-badge" style="display: none;">0</span>
-                </button>
                 <button class="tab-btn active" onclick="switchTab('queries')" data-tab="queries">
                     <i class="fas fa-search"></i> Search Dispatches
                 </button>
@@ -51,6 +48,9 @@
                 </button>
                 <button class="tab-btn" onclick="switchTab('techcalendar')" data-tab="techcalendar">
                     <i class="fas fa-calendar-alt"></i> Technician Calendar
+                </button>
+                <button class="tab-btn" onclick="switchTab('maintenance')" data-tab="maintenance">
+                    <i class="fas fa-database"></i> Database Maintenance
                 </button>
             </div>
         </div>
@@ -87,29 +87,6 @@
                         </div>
                     </div>
                     <div id="capacityResults" class="results-section"></div>
-                </div>
-            </div>
-
-            <!-- Pending Tab -->
-            <div class="tab-panel" id="tab-pending">
-                <div class="tab-panel-content">
-                    <h2><i class="fas fa-clock"></i> Pending Dispatches</h2>
-                    <div class="form-section">
-                        <div class="form-actions">
-                            <button class="btn btn-info" onclick="refreshPending()">
-                                <i class="fas fa-sync"></i> Refresh Pending
-                            </button>
-                            <button class="btn btn-success" onclick="commitPending()">
-                                <i class="fas fa-save"></i> Commit to Database
-                            </button>
-                            <button class="btn btn-danger" onclick="clearPending()">
-                                <i class="fas fa-trash"></i> Clear All (Rollback)
-                            </button>
-                        </div>
-                    </div>
-                    <div id="pendingList" class="results-section">
-                        <p class="text-muted">No pending dispatches</p>
-                    </div>
                 </div>
             </div>
 
@@ -618,6 +595,124 @@
             </div>
         </div>
     </div>
+
+            <!-- Database Maintenance Tab -->
+            <div class="tab-panel" id="tab-maintenance">
+                <div class="tab-panel-content">
+                    <h2><i class="fas fa-database"></i> Database Maintenance</h2>
+                    
+                    <!-- Statistics Section -->
+                    <div class="form-section">
+                        <h3><i class="fas fa-chart-pie"></i> Database Statistics</h3>
+                        <div id="maintenanceStats" class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">
+                            <div class="stat-card" style="background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #007bff;">
+                                <div style="font-size: 12px; color: #666; margin-bottom: 5px;">Total Changes</div>
+                                <div id="statTotalChanges" style="font-size: 24px; font-weight: bold; color: #007bff;">-</div>
+                            </div>
+                            <div class="stat-card" style="background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #28a745;">
+                                <div style="font-size: 12px; color: #666; margin-bottom: 5px;">Recent (24h)</div>
+                                <div id="statRecentChanges" style="font-size: 24px; font-weight: bold; color: #28a745;">-</div>
+                            </div>
+                            <div class="stat-card" style="background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #ffc107;">
+                                <div style="font-size: 12px; color: #666; margin-bottom: 5px;">Inserts</div>
+                                <div id="statInserts" style="font-size: 24px; font-weight: bold; color: #ffc107;">-</div>
+                            </div>
+                            <div class="stat-card" style="background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #17a2b8;">
+                                <div style="font-size: 12px; color: #666; margin-bottom: 5px;">Updates</div>
+                                <div id="statUpdates" style="font-size: 24px; font-weight: bold; color: #17a2b8;">-</div>
+                            </div>
+                            <div class="stat-card" style="background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #dc3545;">
+                                <div style="font-size: 12px; color: #666; margin-bottom: 5px;">Deletes</div>
+                                <div id="statDeletes" style="font-size: 24px; font-weight: bold; color: #dc3545;">-</div>
+                            </div>
+                        </div>
+                        <button class="btn btn-info" onclick="loadMaintenanceStats()">
+                            <i class="fas fa-sync"></i> Refresh Stats
+                        </button>
+                    </div>
+                    
+                    <!-- Change History Section -->
+                    <div class="form-section">
+                        <h3><i class="fas fa-history"></i> Change History</h3>
+                        
+                        <!-- Filters -->
+                        <div class="form-grid" style="margin-bottom: 15px;">
+                            <div class="form-group">
+                                <label for="historyTable">Filter by Table</label>
+                                <select id="historyTable">
+                                    <option value="">-- All Tables --</option>
+                                    <option value="current_dispatches">Current Dispatches</option>
+                                    <option value="technicians">Technicians</option>
+                                    <option value="technician_calendar">Technician Calendar</option>
+                                    <option value="dispatch_history">Dispatch History</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="historyStartDate">Start Date</label>
+                                <input type="date" id="historyStartDate">
+                            </div>
+                            <div class="form-group">
+                                <label for="historyEndDate">End Date</label>
+                                <input type="date" id="historyEndDate">
+                            </div>
+                            <div class="form-group">
+                                <label for="historyLimit">Results Limit</label>
+                                <select id="historyLimit">
+                                    <option value="50">50</option>
+                                    <option value="100" selected>100</option>
+                                    <option value="200">200</option>
+                                    <option value="500">500</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="form-actions">
+                            <button class="btn btn-primary" onclick="loadChangeHistory()">
+                                <i class="fas fa-search"></i> Search History
+                            </button>
+                            <button class="btn btn-secondary" onclick="clearHistoryFilters()">
+                                <i class="fas fa-eraser"></i> Clear Filters
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- History Results -->
+                    <div id="historyResults" class="results-section"></div>
+                    
+                    <!-- Record Deletion Section -->
+                    <div class="form-section" style="margin-top: 30px; border-top: 2px solid #dee2e6; padding-top: 20px;">
+                        <h3><i class="fas fa-trash-alt"></i> Delete Record</h3>
+                        <p class="text-muted" style="margin-bottom: 15px;">
+                            <i class="fas fa-exclamation-triangle"></i> Warning: Deleted records can be restored via rollback, but use with caution.
+                        </p>
+                        
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="deleteTable">Table</label>
+                                <select id="deleteTable" required>
+                                    <option value="">-- Select Table --</option>
+                                    <option value="current_dispatches">Current Dispatches</option>
+                                    <option value="technicians">Technicians</option>
+                                    <option value="technician_calendar">Technician Calendar</option>
+                                    <option value="dispatch_history">Dispatch History</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="deleteRecordId">Record ID</label>
+                                <input type="text" id="deleteRecordId" placeholder="e.g., D123456 or T900080" required>
+                            </div>
+                            <div class="form-group" style="grid-column: 1 / -1;">
+                                <label for="deleteReason">Reason for Deletion</label>
+                                <input type="text" id="deleteReason" placeholder="Explain why this record is being deleted">
+                            </div>
+                        </div>
+                        
+                        <button class="btn btn-danger" onclick="deleteRecord()">
+                            <i class="fas fa-trash"></i> Delete Record
+                        </button>
+                    </div>
+                </div>
+            </div>
 
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 </body>

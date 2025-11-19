@@ -5,6 +5,7 @@ Modern web-based interface for AI-powered dispatch optimization
 
 from flask import Flask, render_template, jsonify, request
 from dispatch import SmartDispatchAI
+from db_maintenance import DatabaseMaintenance
 from typing import Dict, Any, Optional, Callable
 from functools import wraps, lru_cache
 import traceback
@@ -20,6 +21,9 @@ app = Flask(__name__)
 
 # Global AI instance
 optimizer: Optional[SmartDispatchAI] = None
+
+# Global maintenance instance
+maintenance: Optional[DatabaseMaintenance] = None
 MAX_RANGE_KM = 15.0
 
 # Cache for frequently accessed data
@@ -28,7 +32,7 @@ _cache: Dict[str, Any] = {}
 
 def init_optimizer():
     """Initialize the Smart Dispatch AI with lazy loading."""
-    global optimizer
+    global optimizer, maintenance
     if optimizer is None:
         logger.info("Initializing Smart Dispatch AI (Local SQLite mode)...")
         try:
@@ -39,6 +43,18 @@ def init_optimizer():
             import traceback
             logger.error(traceback.format_exc())
             raise
+    
+    if maintenance is None:
+        logger.info("Initializing Database Maintenance...")
+        try:
+            maintenance = DatabaseMaintenance()
+            logger.info("✓ Database Maintenance initialized successfully")
+        except Exception as e:
+            logger.error(f"Failed to initialize Database Maintenance: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
+            raise
+    
     return optimizer
 
 
@@ -1017,6 +1033,123 @@ def api_update_technician_calendar():
         'success': True,
         'message': 'Calendar update successful'
     })
+
+
+# ================================
+# DATABASE MAINTENANCE ENDPOINTS
+# ================================
+
+@app.route('/api/maintenance/history', methods=['POST'])
+@handle_errors
+def api_get_history():
+    """Get change history with optional filters."""
+    if not checkInitialized():
+        return jsonify({'success': False, 'error': 'System not initialized'})
+    
+    data = request.json or {}
+    table_name = data.get('table_name')
+    limit = data.get('limit', 100)
+    offset = data.get('offset', 0)
+    start_date = data.get('start_date')
+    end_date = data.get('end_date')
+    
+    # Use maintenance instance
+    history = maintenance.get_change_history(
+        table_name=table_name,
+        limit=limit,
+        offset=offset,
+        start_date=start_date,
+        end_date=end_date
+    )
+    
+    return jsonify({
+        'success': True,
+        'history': history,
+        'count': len(history)
+    })
+
+
+@app.route('/api/maintenance/stats', methods=['GET'])
+@handle_errors
+def api_get_stats():
+    """Get database change statistics."""
+    if not checkInitialized():
+        return jsonify({'success': False, 'error': 'System not initialized'})
+    
+    # Use maintenance instance
+    stats = maintenance.get_change_stats()
+    
+    return jsonify({
+        'success': True,
+        'stats': stats
+    })
+
+
+@app.route('/api/maintenance/rollback', methods=['POST'])
+@handle_errors
+def api_rollback_change():
+    """Rollback a specific change."""
+    if not checkInitialized():
+        return jsonify({'success': False, 'error': 'System not initialized'})
+    
+    data = request.json or {}
+    change_id = data.get('change_id')
+    
+    if not change_id:
+        return jsonify({'success': False, 'error': 'change_id is required'})
+    
+    # Use maintenance instance
+    success = maintenance.rollback_change(change_id)
+    
+    if success:
+        # Clear cache after rollback
+        _cache.clear()
+        return jsonify({
+            'success': True,
+            'message': f'Successfully rolled back change {change_id}'
+        })
+    else:
+        return jsonify({
+            'success': False,
+            'error': f'Failed to rollback change {change_id}'
+        })
+
+
+@app.route('/api/maintenance/delete', methods=['POST'])
+@handle_errors
+def api_delete_record():
+    """Delete a record from the database."""
+    if not checkInitialized():
+        return jsonify({'success': False, 'error': 'System not initialized'})
+    
+    data = request.json or {}
+    table_name = data.get('table_name')
+    record_id = data.get('record_id')
+    reason = data.get('reason', 'User requested deletion')
+    
+    if not table_name or not record_id:
+        return jsonify({'success': False, 'error': 'table_name and record_id are required'})
+    
+    # Validate table name
+    valid_tables = ['current_dispatches', 'technicians', 'technician_calendar', 'dispatch_history']
+    if table_name not in valid_tables:
+        return jsonify({'success': False, 'error': f'Invalid table name. Must be one of: {", ".join(valid_tables)}'})
+    
+    # Use maintenance instance
+    success = maintenance.delete_record(table_name, record_id, reason)
+    
+    if success:
+        # Clear cache after deletion
+        _cache.clear()
+        return jsonify({
+            'success': True,
+            'message': f'Successfully deleted record {record_id} from {table_name}'
+        })
+    else:
+        return jsonify({
+            'success': False,
+            'error': f'Failed to delete record {record_id} from {table_name}'
+        })
 
 
 if __name__ == '__main__':
