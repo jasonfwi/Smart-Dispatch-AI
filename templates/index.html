@@ -16,7 +16,7 @@
                 <h1>Smart Dispatch AI</h1>
             </div>
             <div class="header-status">
-                <span class="db-mode-badge" id="dbModeBadge" title="Database Mode">
+                <span class="db-mode-badge" id="dbModeBadge" title="Click for Database Maintenance" onclick="openMaintenanceModal()" style="cursor: pointer;">
                     <i class="fas fa-database"></i> <span id="dbModeText">Loading...</span>
                 </span>
                 <span class="status-badge" id="statusBadge">
@@ -48,9 +48,6 @@
                 </button>
                 <button class="tab-btn" onclick="switchTab('techcalendar')" data-tab="techcalendar">
                     <i class="fas fa-calendar-alt"></i> Technician Calendar
-                </button>
-                <button class="tab-btn" onclick="switchTab('maintenance')" data-tab="maintenance">
-                    <i class="fas fa-database"></i> Database Maintenance
                 </button>
             </div>
         </div>
@@ -97,47 +94,79 @@
                     
                     <!-- Filters and Actions Section -->
                     <div class="form-section">
-                        <h3><i class="fas fa-filter"></i> Search Filters & Actions</h3>
+                        <h3><i class="fas fa-filter"></i> Search Filters</h3>
+                        <p class="helper-text" style="margin-bottom: 15px;">
+                            <i class="fas fa-info-circle"></i> Fill in any combination of fields below to search dispatches.
+                        </p>
                         <div class="form-grid">
                             <div class="form-group">
                                 <label for="dispatchId">Dispatch ID</label>
-                                <input type="number" id="dispatchId" placeholder="e.g., 12345">
+                                <input type="text" id="dispatchId" list="dispatchIdList" placeholder="e.g., 200000000">
+                                <datalist id="dispatchIdList"></datalist>
                             </div>
                             <div class="form-group">
-                                <label for="startDate">Start Date (optional)</label>
+                                <label for="dispatchStatus">Status</label>
+                                <select id="dispatchStatus">
+                                    <option value="">-- All Statuses --</option>
+                                    <option value="Pending">Pending</option>
+                                    <option value="In Progress">In Progress</option>
+                                    <option value="Completed">Completed</option>
+                                    <option value="Cancelled">Cancelled</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="dispatchAssignment">Assignment Status</label>
+                                <select id="dispatchAssignment">
+                                    <option value="">-- All --</option>
+                                    <option value="unassigned">Unassigned Only</option>
+                                    <option value="assigned">Assigned Only</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="dispatchPriority">Priority</label>
+                                <select id="dispatchPriority">
+                                    <option value="">-- All Priorities --</option>
+                                    <option value="Critical">Critical</option>
+                                    <option value="High">High</option>
+                                    <option value="Medium">Medium</option>
+                                    <option value="Low">Low</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="startDate">Start Date</label>
                                 <input type="date" id="startDate">
                             </div>
                             <div class="form-group">
-                                <label for="endDate">End Date (optional)</label>
+                                <label for="endDate">End Date</label>
                                 <input type="date" id="endDate">
                             </div>
                             <div class="form-group">
-                                <label for="state">State (optional)</label>
+                                <label for="state">State</label>
                                 <select id="state" onchange="onStateChange()">
                                     <option value="">-- All States --</option>
                                 </select>
                             </div>
                             <div class="form-group">
-                                <label for="city">City (optional)</label>
+                                <label for="city">City</label>
                                 <select id="city" onchange="onCityChange()">
                                     <option value="">-- All Cities --</option>
                                 </select>
                             </div>
+                            <div class="form-group">
+                                <label for="dispatchSkill">Required Skill</label>
+                                <select id="dispatchSkill">
+                                    <option value="">-- All Skills --</option>
+                                </select>
+                            </div>
                         </div>
                         <div class="form-actions" style="margin-top: var(--spacing-md);">
-                            <button class="btn btn-primary" onclick="viewUnassigned()" type="button">
-                                <i class="fas fa-clipboard-list"></i> View Unassigned Dispatches
-                            </button>
-                            <button class="btn btn-primary" onclick="findDispatches()" type="button">
-                                <i class="fas fa-search"></i> Find Available Dispatches
+                            <button class="btn btn-primary" onclick="searchDispatches()" type="button">
+                                <i class="fas fa-search"></i> Search Dispatches
                             </button>
                             <button class="btn btn-secondary" onclick="clearAll()" type="button">
                                 <i class="fas fa-broom"></i> Clear All Fields
                             </button>
                         </div>
-                        <p class="helper-text" style="margin-top: var(--spacing-md);">
-                            <i class="fas fa-info-circle"></i> Select filters above (optional), then click a query button to execute.
-                        </p>
                     </div>
                 </div>
             </div>
@@ -585,6 +614,59 @@
                             </div>
                         </div>
                     </form>
+                    
+                    <!-- Bulk Week Generation Section -->
+                    <div class="form-section" style="margin-top: 30px; border-top: 2px solid #dee2e6; padding-top: 20px;">
+                        <h3><i class="fas fa-calendar-plus"></i> Generate Week Schedule</h3>
+                        <p class="helper-text" style="margin-bottom: 15px;">
+                            <i class="fas fa-info-circle"></i> Quickly create a full week (Monday-Friday) of calendar entries for this technician.
+                        </p>
+                        
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="bulkWeekStart">Week Starting (Monday)</label>
+                                <input type="date" id="bulkWeekStart" placeholder="Select Monday">
+                            </div>
+                            <div class="form-group">
+                                <label for="bulkAvailable">Default Availability</label>
+                                <select id="bulkAvailable">
+                                    <option value="1" selected>Available</option>
+                                    <option value="0">Unavailable</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="bulkStartTime">Start Time</label>
+                                <input type="time" id="bulkStartTime" value="09:00">
+                            </div>
+                            <div class="form-group">
+                                <label for="bulkEndTime">End Time</label>
+                                <input type="time" id="bulkEndTime" value="17:00">
+                            </div>
+                            <div class="form-group">
+                                <label for="bulkMaxAssignments">Max Assignments (hours)</label>
+                                <input type="number" id="bulkMaxAssignments" min="0" max="24" step="1" placeholder="From tech profile">
+                            </div>
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="bulkIncludeWeekend" style="width: auto; margin-right: 8px;">
+                                    Include Weekend (Sat-Sun)
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="form-actions" style="margin-top: 15px;">
+                            <button class="btn btn-primary" onclick="generateTechnicianWeek()" type="button">
+                                <i class="fas fa-calendar-plus"></i> Generate Week
+                            </button>
+                            <button class="btn btn-secondary" onclick="setNextMonday()" type="button">
+                                <i class="fas fa-arrow-right"></i> Set to Next Monday
+                            </button>
+                        </div>
+                        
+                        <p class="helper-text" style="margin-top: 10px; color: #856404; background: #fff3cd; padding: 10px; border-radius: 4px;">
+                            <i class="fas fa-exclamation-triangle"></i> <strong>Note:</strong> Manual entries will be skipped by the automated weekly generation script.
+                        </p>
+                    </div>
                 </div>
             </div>
             <div class="modal-footer">
@@ -596,123 +678,130 @@
         </div>
     </div>
 
-            <!-- Database Maintenance Tab -->
-            <div class="tab-panel" id="tab-maintenance">
-                <div class="tab-panel-content">
-                    <h2><i class="fas fa-database"></i> Database Maintenance</h2>
-                    
-                    <!-- Statistics Section -->
-                    <div class="form-section">
-                        <h3><i class="fas fa-chart-pie"></i> Database Statistics</h3>
-                        <div id="maintenanceStats" class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">
-                            <div class="stat-card" style="background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #007bff;">
-                                <div style="font-size: 12px; color: #666; margin-bottom: 5px;">Total Changes</div>
-                                <div id="statTotalChanges" style="font-size: 24px; font-weight: bold; color: #007bff;">-</div>
-                            </div>
-                            <div class="stat-card" style="background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #28a745;">
-                                <div style="font-size: 12px; color: #666; margin-bottom: 5px;">Recent (24h)</div>
-                                <div id="statRecentChanges" style="font-size: 24px; font-weight: bold; color: #28a745;">-</div>
-                            </div>
-                            <div class="stat-card" style="background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #ffc107;">
-                                <div style="font-size: 12px; color: #666; margin-bottom: 5px;">Inserts</div>
-                                <div id="statInserts" style="font-size: 24px; font-weight: bold; color: #ffc107;">-</div>
-                            </div>
-                            <div class="stat-card" style="background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #17a2b8;">
-                                <div style="font-size: 12px; color: #666; margin-bottom: 5px;">Updates</div>
-                                <div id="statUpdates" style="font-size: 24px; font-weight: bold; color: #17a2b8;">-</div>
-                            </div>
-                            <div class="stat-card" style="background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #dc3545;">
-                                <div style="font-size: 12px; color: #666; margin-bottom: 5px;">Deletes</div>
-                                <div id="statDeletes" style="font-size: 24px; font-weight: bold; color: #dc3545;">-</div>
-                            </div>
+    <!-- Database Maintenance Modal -->
+    <div id="maintenanceModal" class="modal">
+        <div class="modal-content" style="max-width: 1200px; max-height: 90vh; overflow-y: auto;">
+            <div class="modal-header">
+                <h2><i class="fas fa-database"></i> Database Maintenance</h2>
+                <button class="close-btn" onclick="closeMaintenanceModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <!-- Statistics Section -->
+                <div class="form-section">
+                    <h3><i class="fas fa-chart-pie"></i> Database Statistics</h3>
+                    <div id="maintenanceStats" class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">
+                        <div class="stat-card" style="background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #007bff;">
+                            <div style="font-size: 12px; color: #666; margin-bottom: 5px;">Total Changes</div>
+                            <div id="statTotalChanges" style="font-size: 24px; font-weight: bold; color: #007bff;">-</div>
                         </div>
-                        <button class="btn btn-info" onclick="loadMaintenanceStats()">
-                            <i class="fas fa-sync"></i> Refresh Stats
+                        <div class="stat-card" style="background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #28a745;">
+                            <div style="font-size: 12px; color: #666; margin-bottom: 5px;">Recent (24h)</div>
+                            <div id="statRecentChanges" style="font-size: 24px; font-weight: bold; color: #28a745;">-</div>
+                        </div>
+                        <div class="stat-card" style="background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #ffc107;">
+                            <div style="font-size: 12px; color: #666; margin-bottom: 5px;">Inserts</div>
+                            <div id="statInserts" style="font-size: 24px; font-weight: bold; color: #ffc107;">-</div>
+                        </div>
+                        <div class="stat-card" style="background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #17a2b8;">
+                            <div style="font-size: 12px; color: #666; margin-bottom: 5px;">Updates</div>
+                            <div id="statUpdates" style="font-size: 24px; font-weight: bold; color: #17a2b8;">-</div>
+                        </div>
+                        <div class="stat-card" style="background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #dc3545;">
+                            <div style="font-size: 12px; color: #666; margin-bottom: 5px;">Deletes</div>
+                            <div id="statDeletes" style="font-size: 24px; font-weight: bold; color: #dc3545;">-</div>
+                        </div>
+                    </div>
+                    <button class="btn btn-info" onclick="loadMaintenanceStats()">
+                        <i class="fas fa-sync"></i> Refresh Stats
+                    </button>
+                </div>
+                
+                <!-- Change History Section -->
+                <div class="form-section">
+                    <h3><i class="fas fa-history"></i> Change History</h3>
+                    
+                    <!-- Filters -->
+                    <div class="form-grid" style="margin-bottom: 15px;">
+                        <div class="form-group">
+                            <label for="historyTable">Filter by Table</label>
+                            <select id="historyTable">
+                                <option value="">-- All Tables --</option>
+                                <option value="current_dispatches">Current Dispatches</option>
+                                <option value="technicians">Technicians</option>
+                                <option value="technician_calendar">Technician Calendar</option>
+                                <option value="dispatch_history">Dispatch History</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="historyStartDate">Start Date</label>
+                            <input type="date" id="historyStartDate">
+                        </div>
+                        <div class="form-group">
+                            <label for="historyEndDate">End Date</label>
+                            <input type="date" id="historyEndDate">
+                        </div>
+                        <div class="form-group">
+                            <label for="historyLimit">Results Limit</label>
+                            <select id="historyLimit">
+                                <option value="50">50</option>
+                                <option value="100" selected>100</option>
+                                <option value="200">200</option>
+                                <option value="500">500</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button class="btn btn-primary" onclick="loadChangeHistory()">
+                            <i class="fas fa-search"></i> Search History
                         </button>
-                    </div>
-                    
-                    <!-- Change History Section -->
-                    <div class="form-section">
-                        <h3><i class="fas fa-history"></i> Change History</h3>
-                        
-                        <!-- Filters -->
-                        <div class="form-grid" style="margin-bottom: 15px;">
-                            <div class="form-group">
-                                <label for="historyTable">Filter by Table</label>
-                                <select id="historyTable">
-                                    <option value="">-- All Tables --</option>
-                                    <option value="current_dispatches">Current Dispatches</option>
-                                    <option value="technicians">Technicians</option>
-                                    <option value="technician_calendar">Technician Calendar</option>
-                                    <option value="dispatch_history">Dispatch History</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label for="historyStartDate">Start Date</label>
-                                <input type="date" id="historyStartDate">
-                            </div>
-                            <div class="form-group">
-                                <label for="historyEndDate">End Date</label>
-                                <input type="date" id="historyEndDate">
-                            </div>
-                            <div class="form-group">
-                                <label for="historyLimit">Results Limit</label>
-                                <select id="historyLimit">
-                                    <option value="50">50</option>
-                                    <option value="100" selected>100</option>
-                                    <option value="200">200</option>
-                                    <option value="500">500</option>
-                                </select>
-                            </div>
-                        </div>
-                        
-                        <div class="form-actions">
-                            <button class="btn btn-primary" onclick="loadChangeHistory()">
-                                <i class="fas fa-search"></i> Search History
-                            </button>
-                            <button class="btn btn-secondary" onclick="clearHistoryFilters()">
-                                <i class="fas fa-eraser"></i> Clear Filters
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <!-- History Results -->
-                    <div id="historyResults" class="results-section"></div>
-                    
-                    <!-- Record Deletion Section -->
-                    <div class="form-section" style="margin-top: 30px; border-top: 2px solid #dee2e6; padding-top: 20px;">
-                        <h3><i class="fas fa-trash-alt"></i> Delete Record</h3>
-                        <p class="text-muted" style="margin-bottom: 15px;">
-                            <i class="fas fa-exclamation-triangle"></i> Warning: Deleted records can be restored via rollback, but use with caution.
-                        </p>
-                        
-                        <div class="form-grid">
-                            <div class="form-group">
-                                <label for="deleteTable">Table</label>
-                                <select id="deleteTable" required>
-                                    <option value="">-- Select Table --</option>
-                                    <option value="current_dispatches">Current Dispatches</option>
-                                    <option value="technicians">Technicians</option>
-                                    <option value="technician_calendar">Technician Calendar</option>
-                                    <option value="dispatch_history">Dispatch History</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label for="deleteRecordId">Record ID</label>
-                                <input type="text" id="deleteRecordId" placeholder="e.g., D123456 or T900080" required>
-                            </div>
-                            <div class="form-group" style="grid-column: 1 / -1;">
-                                <label for="deleteReason">Reason for Deletion</label>
-                                <input type="text" id="deleteReason" placeholder="Explain why this record is being deleted">
-                            </div>
-                        </div>
-                        
-                        <button class="btn btn-danger" onclick="deleteRecord()">
-                            <i class="fas fa-trash"></i> Delete Record
+                        <button class="btn btn-secondary" onclick="clearHistoryFilters()">
+                            <i class="fas fa-eraser"></i> Clear Filters
                         </button>
                     </div>
                 </div>
+                
+                <!-- History Results -->
+                <div id="historyResults" class="results-section"></div>
+                
+                <!-- Record Deletion Section -->
+                <div class="form-section" style="margin-top: 30px; border-top: 2px solid #dee2e6; padding-top: 20px;">
+                    <h3><i class="fas fa-trash-alt"></i> Delete Record</h3>
+                    <p class="text-muted" style="margin-bottom: 15px;">
+                        <i class="fas fa-exclamation-triangle"></i> Warning: Deleted records can be restored via rollback, but use with caution.
+                    </p>
+                    
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="deleteTable">Table</label>
+                            <select id="deleteTable" required>
+                                <option value="">-- Select Table --</option>
+                                <option value="current_dispatches">Current Dispatches</option>
+                                <option value="technicians">Technicians</option>
+                                <option value="technician_calendar">Technician Calendar</option>
+                                <option value="dispatch_history">Dispatch History</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="deleteRecordId">Record ID</label>
+                            <input type="text" id="deleteRecordId" placeholder="e.g., D123456 or T900080" required>
+                        </div>
+                        <div class="form-group" style="grid-column: 1 / -1;">
+                            <label for="deleteReason">Reason for Deletion</label>
+                            <input type="text" id="deleteReason" placeholder="Explain why this record is being deleted">
+                        </div>
+                    </div>
+                    
+                    <button class="btn btn-danger" onclick="deleteRecord()">
+                        <i class="fas fa-trash"></i> Delete Record
+                    </button>
+                </div>
             </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeMaintenanceModal()">Close</button>
+            </div>
+        </div>
+    </div>
 
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 </body>

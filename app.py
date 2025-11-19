@@ -164,32 +164,142 @@ def api_cities():
     })
 
 
-@app.route('/api/unassigned', methods=['POST'])
+@app.route('/api/dispatches/search', methods=['POST'])
 @handle_api_errors
-def api_unassigned():
-    """Get unassigned dispatches."""
+def api_search_dispatches():
+    """Unified dispatch search with flexible filters."""
     opt = init_optimizer()
     data = request.get_json() or {}
     
-    date = data.get('date') or None
-    city = data.get('city') or None
+    dispatch_id = data.get('dispatch_id') or None
+    status = data.get('status') or None
+    assignment_status = data.get('assignment_status') or None
+    priority = data.get('priority') or None
+    start_date = data.get('start_date') or None
+    end_date = data.get('end_date') or None
     state = data.get('state') or None
-    limit = int(data.get('limit', 100))
+    city = data.get('city') or None
+    skill = data.get('skill') or None
+    limit = int(data.get('limit', 500))
     
-    result = opt.get_unassigned_dispatches(
-        date=date,
-        city=city,
-        state=state,
-        limit=limit
-    )
+    # Build SQL query dynamically based on provided filters
+    sql = "SELECT * FROM current_dispatches WHERE 1=1"
+    params = []
     
-    # Efficient DataFrame to dict conversion
+    if dispatch_id:
+        sql += " AND Dispatch_id = ?"
+        params.append(dispatch_id)
+    
+    if status:
+        sql += " AND Status = ?"
+        params.append(status)
+    
+    if assignment_status == 'unassigned':
+        sql += " AND (Assigned_technician_id IS NULL OR Assigned_technician_id = '')"
+    elif assignment_status == 'assigned':
+        sql += " AND Assigned_technician_id IS NOT NULL AND Assigned_technician_id != ''"
+    
+    if priority:
+        sql += " AND Priority = ?"
+        params.append(priority)
+    
+    if start_date and end_date:
+        sql += " AND DATE(Appointment_start_datetime) BETWEEN ? AND ?"
+        params.append(start_date)
+        params.append(end_date)
+    elif start_date:
+        sql += " AND DATE(Appointment_start_datetime) >= ?"
+        params.append(start_date)
+    elif end_date:
+        sql += " AND DATE(Appointment_start_datetime) <= ?"
+        params.append(end_date)
+    
+    if state:
+        sql += " AND State = ?"
+        params.append(state)
+    
+    if city:
+        sql += " AND City = ?"
+        params.append(city)
+    
+    if skill:
+        sql += " AND Required_skill = ?"
+        params.append(skill)
+    
+    sql += " ORDER BY Priority DESC, Appointment_start_datetime ASC LIMIT ?"
+    params.append(limit)
+    
+    result = opt.db.query(sql, tuple(params) if params else None)
+    
+    # Convert to dict format
     result_dict = df_to_dict(result)
     
     return jsonify({
         'success': True,
         **result_dict
     })
+
+
+@app.route('/api/dispatches/ids', methods=['GET'])
+@handle_api_errors
+def api_dispatch_ids():
+    """Get all dispatch IDs for autocomplete."""
+    opt = init_optimizer()
+    
+    result = opt.db.query("""
+        SELECT Dispatch_id 
+        FROM current_dispatches 
+        ORDER BY Dispatch_id DESC 
+        LIMIT 1000
+    """)
+    
+    dispatch_ids = [str(row['Dispatch_id']) for row in result] if result else []
+    
+    return jsonify({
+        'success': True,
+        'dispatch_ids': dispatch_ids
+    })
+
+
+@app.route('/api/skills', methods=['GET'])
+@handle_api_errors
+def api_skills():
+    """Get all unique skills."""
+    opt = init_optimizer()
+    
+    result = opt.db.query("""
+        SELECT DISTINCT Required_skill 
+        FROM current_dispatches 
+        WHERE Required_skill IS NOT NULL AND Required_skill != ''
+        ORDER BY Required_skill
+    """)
+    
+    skills = [row['Required_skill'] for row in result] if result else []
+    
+    return jsonify({
+        'success': True,
+        'skills': skills
+    })
+
+
+@app.route('/api/unassigned', methods=['POST'])
+@handle_api_errors
+def api_unassigned():
+    """Get unassigned dispatches - legacy endpoint, redirects to search."""
+    data = request.get_json() or {}
+    
+    # Convert to new search format
+    search_data = {
+        'assignment_status': 'unassigned',
+        'start_date': data.get('date'),
+        'city': data.get('city'),
+        'state': data.get('state'),
+        'limit': data.get('limit', 100)
+    }
+    
+    # Call the new search endpoint
+    request._cached_json = search_data
+    return api_search_dispatches()
 
 
 @app.route('/api/technician/assignments', methods=['POST'])
@@ -1035,16 +1145,122 @@ def api_update_technician_calendar():
     })
 
 
+@app.route('/api/technician/generate-week', methods=['POST'])
+@handle_api_errors
+def api_generate_technician_week():
+    """Generate a full week of calendar entries for a technician (manual creation)."""
+    opt = init_optimizer()
+    data = request.get_json() or {}
+    
+    tech_id = data.get('tech_id')
+    week_start = data.get('week_start')
+    
+    if not tech_id or not week_start:
+        raise ValueError('tech_id and week_start required')
+    
+    available = data.get('available', 1)
+    start_time = data.get('start_time', '09:00')
+    end_time = data.get('end_time', '17:00')
+    max_assignments = data.get('max_assignments')
+    include_weekend = data.get('include_weekend', False)
+    
+    # Get technician info for default max_assignments
+    if max_assignments is None:
+        tech_info = opt._get_technician_data_cached(tech_id)
+        if tech_info:
+            max_assignments = tech_info.workload_capacity
+        else:
+            max_assignments = 8  # Default fallback
+    
+    # Generate entries for the week
+    from datetime import datetime, timedelta
+    import json
+    
+    start_date = datetime.strptime(week_start, '%Y-%m-%d')
+    num_days = 7 if include_weekend else 5
+    
+    entries_created = 0
+    entries_skipped = 0
+    
+    for day_offset in range(num_days):
+        entry_date = start_date + timedelta(days=day_offset)
+        date_str = entry_date.strftime('%Y-%m-%d')
+        day_name = entry_date.strftime('%A')
+        
+        # Check if entry already exists
+        existing = opt.db.query(
+            "SELECT * FROM technician_calendar WHERE Technician_id = ? AND Date = ?",
+            (tech_id, date_str)
+        )
+        
+        if existing:
+            entries_skipped += 1
+            continue
+        
+        # Create start/end datetime strings
+        start_datetime = f"{date_str} {start_time}:00"
+        end_datetime = f"{date_str} {end_time}:00"
+        
+        # Insert entry
+        opt.db.execute("""
+            INSERT INTO technician_calendar
+            (Technician_id, Date, Day_of_week, Available, Start_time, End_time, Reason, Max_assignments)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            tech_id,
+            date_str,
+            day_name,
+            available,
+            start_datetime,
+            end_datetime,
+            '' if available == 1 else 'Manually set unavailable',
+            max_assignments
+        ))
+        
+        # Log to change_history
+        maintenance.log_change(
+            table_name='technician_calendar',
+            operation='INSERT',
+            record_id=f"{tech_id}_{date_str}",
+            new_data={
+                'Technician_id': tech_id,
+                'Date': date_str,
+                'Day_of_week': day_name,
+                'Available': available,
+                'Start_time': start_datetime,
+                'End_time': end_datetime,
+                'Max_assignments': max_assignments,
+                'manual_entry': True
+            },
+            user_action=f'Manual week generation via UI for {date_str}'
+        )
+        
+        entries_created += 1
+    
+    # Clear cache
+    _cache.clear()
+    
+    week_end = (start_date + timedelta(days=num_days-1)).strftime('%Y-%m-%d')
+    
+    return jsonify({
+        'success': True,
+        'entries_created': entries_created,
+        'entries_skipped': entries_skipped,
+        'week_start': week_start,
+        'week_end': week_end,
+        'tech_id': tech_id
+    })
+
+
 # ================================
 # DATABASE MAINTENANCE ENDPOINTS
 # ================================
 
 @app.route('/api/maintenance/history', methods=['POST'])
-@handle_errors
+@handle_api_errors
 def api_get_history():
     """Get change history with optional filters."""
-    if not checkInitialized():
-        return jsonify({'success': False, 'error': 'System not initialized'})
+    init_optimizer()  # Ensure both optimizer and maintenance are initialized
     
     data = request.json or {}
     table_name = data.get('table_name')
@@ -1070,11 +1286,10 @@ def api_get_history():
 
 
 @app.route('/api/maintenance/stats', methods=['GET'])
-@handle_errors
+@handle_api_errors
 def api_get_stats():
     """Get database change statistics."""
-    if not checkInitialized():
-        return jsonify({'success': False, 'error': 'System not initialized'})
+    init_optimizer()  # Ensure both optimizer and maintenance are initialized
     
     # Use maintenance instance
     stats = maintenance.get_change_stats()
@@ -1086,11 +1301,10 @@ def api_get_stats():
 
 
 @app.route('/api/maintenance/rollback', methods=['POST'])
-@handle_errors
+@handle_api_errors
 def api_rollback_change():
     """Rollback a specific change."""
-    if not checkInitialized():
-        return jsonify({'success': False, 'error': 'System not initialized'})
+    init_optimizer()  # Ensure both optimizer and maintenance are initialized
     
     data = request.json or {}
     change_id = data.get('change_id')
@@ -1116,11 +1330,10 @@ def api_rollback_change():
 
 
 @app.route('/api/maintenance/delete', methods=['POST'])
-@handle_errors
+@handle_api_errors
 def api_delete_record():
     """Delete a record from the database."""
-    if not checkInitialized():
-        return jsonify({'success': False, 'error': 'System not initialized'})
+    init_optimizer()  # Ensure both optimizer and maintenance are initialized
     
     data = request.json or {}
     table_name = data.get('table_name')

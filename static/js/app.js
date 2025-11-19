@@ -81,6 +81,10 @@ async function initialize() {
             // Load skills and priorities
             loadSkillsAndPriorities();
             
+            // Load dispatch IDs and skills for autocomplete (don't block on these)
+            loadDispatchIds().catch(err => console.warn('Failed to load dispatch IDs:', err));
+            loadDispatchSkills().catch(err => console.warn('Failed to load skills:', err));
+            
             // Set minimum date to tomorrow
             const tomorrow = new Date();
             tomorrow.setDate(tomorrow.getDate() + 1);
@@ -938,43 +942,50 @@ function toggleSection(sectionId) {
 // API CALLS
 // ================================
 
-async function viewUnassigned() {
+// New unified search function for dispatches
+async function searchDispatches() {
     if (!checkInitialized()) return;
     
-    const date = document.getElementById('startDate').value || null;
+    // Collect all search parameters
+    const dispatchId = document.getElementById('dispatchId').value || null;
+    const status = document.getElementById('dispatchStatus').value || null;
+    const assignment = document.getElementById('dispatchAssignment').value || null;
+    const priority = document.getElementById('dispatchPriority').value || null;
+    const startDate = document.getElementById('startDate').value || null;
+    const endDate = document.getElementById('endDate').value || null;
+    const state = document.getElementById('state').value || null;
     const city = document.getElementById('city').value || null;
-    const stateValue = document.getElementById('state').value || null;
+    const skill = document.getElementById('dispatchSkill').value || null;
     
     const params = {
-        date: date,
+        dispatch_id: dispatchId,
+        status: status,
+        assignment_status: assignment,
+        priority: priority,
+        start_date: startDate,
+        end_date: endDate,
+        state: state,
         city: city,
-        state: stateValue,
-        limit: 100
+        skill: skill,
+        limit: 500
     };
     
-    // Populate filters back to form after query
-    if (date) {
-        const createDateField = document.getElementById('createDate');
-        if (createDateField && !createDateField.value) {
-            createDateField.value = date;
-        }
-    }
-    if (city) {
-        const createCityField = document.getElementById('createCity');
-        if (createCityField && !createCityField.value) {
-            createCityField.value = city;
-            onCreateCityChange();
-        }
-    }
-    if (stateValue) {
-        const createStateField = document.getElementById('createState');
-        if (createStateField && !createStateField.value) {
-            createStateField.value = stateValue;
-            onCreateStateChange();
-        }
+    // Build title based on filters
+    let title = 'Dispatch Search Results';
+    if (assignment === 'unassigned') {
+        title = 'Unassigned Dispatches';
+    } else if (assignment === 'assigned') {
+        title = 'Assigned Dispatches';
     }
     
-    await executeQuery('/api/unassigned', params, 'Unassigned Dispatches', 'dispatch');
+    await executeQuery('/api/dispatches/search', params, title, 'dispatch');
+}
+
+// Legacy function - now calls searchDispatches
+async function viewUnassigned() {
+    // Set assignment filter to unassigned
+    document.getElementById('dispatchAssignment').value = 'unassigned';
+    await searchDispatches();
 }
 
 async function checkAssignments() {
@@ -1061,32 +1072,59 @@ async function checkAvailability() {
     }
 }
 
-async function findDispatches() {
-    if (!checkInitialized()) return;
-    
-    // Check both old and new field IDs for backward compatibility
-    const techId = document.getElementById('techIdTech')?.value || document.getElementById('techId')?.value;
-    const date = document.getElementById('techDate')?.value || document.getElementById('startDate')?.value;
-    
-    if (!techId || !date) {
-        alert('Please enter both Technician ID and Date');
-        return;
-    }
-    
-    // Populate technician ID in technician tab if not already set
-    const techIdField = document.getElementById('techIdTech');
-    if (techIdField && !techIdField.value) {
-        techIdField.value = techId;
-    }
-    if (date) {
-        const techDateField = document.getElementById('techDate');
-        if (techDateField && !techDateField.value) {
-            techDateField.value = date;
+// Load dispatch IDs for autocomplete
+async function loadDispatchIds() {
+    try {
+        const response = await fetch('/api/dispatches/ids', {
+            method: 'GET',
+            headers: {'Content-Type': 'application/json'}
+        });
+        
+        const data = await response.json();
+        
+        if (data.success && data.dispatch_ids) {
+            const datalist = document.getElementById('dispatchIdList');
+            if (datalist) {
+                datalist.innerHTML = '';
+                data.dispatch_ids.forEach(id => {
+                    const option = document.createElement('option');
+                    option.value = id;
+                    datalist.appendChild(option);
+                });
+                logMessage(`✅ Loaded ${data.dispatch_ids.length} dispatch IDs for autocomplete`, 'success');
+            }
         }
+    } catch (error) {
+        console.warn('Failed to load dispatch IDs:', error);
     }
-    
-    const params = {tech_id: techId, date: date};
-    await executeQuery('/api/dispatches/available', params, 'Available Dispatches', 'dispatch');
+}
+
+// Load skills for dispatch search
+async function loadDispatchSkills() {
+    try {
+        const response = await fetch('/api/skills', {
+            method: 'GET',
+            headers: {'Content-Type': 'application/json'}
+        });
+        
+        const data = await response.json();
+        
+        if (data.success && data.skills) {
+            const skillSelect = document.getElementById('dispatchSkill');
+            if (skillSelect) {
+                // Keep the "All Skills" option
+                const currentOptions = skillSelect.innerHTML;
+                data.skills.forEach(skill => {
+                    const option = document.createElement('option');
+                    option.value = skill;
+                    option.textContent = skill;
+                    skillSelect.appendChild(option);
+                });
+            }
+        }
+    } catch (error) {
+        console.warn('Failed to load skills:', error);
+    }
 }
 
 async function findTechnicians() {
@@ -2934,6 +2972,35 @@ function restoreSelectedTab() {
 // ================================
 // DATABASE MAINTENANCE FUNCTIONS
 // ================================
+
+function openMaintenanceModal() {
+    const modal = document.getElementById('maintenanceModal');
+    modal.style.display = 'block';
+    
+    // Load stats when modal opens
+    loadMaintenanceStats();
+    
+    logMessage('🔧 Database Maintenance opened', 'info');
+}
+
+function closeMaintenanceModal() {
+    const modal = document.getElementById('maintenanceModal');
+    modal.style.display = 'none';
+    
+    // Clear results when closing
+    const resultsDiv = document.getElementById('historyResults');
+    if (resultsDiv) {
+        resultsDiv.innerHTML = '<p class="text-muted">Use the filters above to search change history</p>';
+    }
+}
+
+// Close modal when clicking outside of it
+window.onclick = function(event) {
+    const modal = document.getElementById('maintenanceModal');
+    if (event.target === modal) {
+        closeMaintenanceModal();
+    }
+}
 
 async function loadMaintenanceStats() {
     if (!checkInitialized()) return;
