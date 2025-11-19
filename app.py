@@ -1523,5 +1523,12 @@ def api_delete_record():
 if __name__ == '__main__':
     logger.info("🚀 Starting Smart Dispatch AI Web App...")
     logger.info("📍 Open your browser to: http://localhost:5001")
-    app.run(debug=True, host='0.0.0.0', port=5001, threaded=True)
+    
+    # Debug mode should be disabled in production
+    # Set FLASK_DEBUG=1 in environment to enable debug mode
+    debug_mode = os.getenv('FLASK_DEBUG', '0').lower() in ('1', 'true', 'yes')
+    if debug_mode:
+        logger.warning("⚠️ Debug mode is ENABLED - not recommended for production")
+    
+    app.run(debug=debug_mode, host='0.0.0.0', port=5001, threaded=True)
 
