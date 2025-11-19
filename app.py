@@ -7,24 +7,40 @@ from flask import Flask, render_template, jsonify, request
 from dispatch import SmartDispatchAI
 from db_maintenance import DatabaseMaintenance
 from typing import Dict, Any, Optional, Callable
-from functools import wraps, lru_cache
+from functools import wraps
 import traceback
 from datetime import datetime
 import logging
 import os
 
+# Import utilities
+from utils import (
+    build_dispatch_search_query,
+    validate_limit,
+    sanitize_string,
+    success_response,
+    error_response,
+    normalize_date,
+    DEFAULT_SEARCH_LIMIT,
+    AUTOCOMPLETE_LIMIT
+)
+
 # Configure logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
-# Global AI instance
-optimizer: Optional[SmartDispatchAI] = None
-
-# Global maintenance instance
-maintenance: Optional[DatabaseMaintenance] = None
+# Configuration constants
 MAX_RANGE_KM = 15.0
+CACHE_TTL_SECONDS = 300  # 5 minutes
+
+# Global instances (lazy-loaded)
+optimizer: Optional[SmartDispatchAI] = None
+maintenance: Optional[DatabaseMaintenance] = None
 
 # Cache for frequently accessed data
 _cache: Dict[str, Any] = {}
@@ -59,26 +75,45 @@ def init_optimizer():
 
 
 def handle_api_errors(f: Callable) -> Callable:
-    """Decorator to handle API errors consistently."""
+    """
+    Decorator to handle API errors consistently.
+    
+    Handles:
+    - ValueError: Validation errors (400)
+    - KeyError: Missing required fields (400)
+    - Exception: Unexpected errors (500)
+    """
     @wraps(f)
     def wrapper(*args, **kwargs):
         try:
             return f(*args, **kwargs)
         except ValueError as e:
-            logger.error(f"Validation error in {f.__name__}: {str(e)}")
-            return jsonify({'success': False, 'error': str(e)}), 400
+            logger.warning(f"Validation error in {f.__name__}: {str(e)}")
+            response, status = error_response(str(e), status_code=400)
+            return jsonify(response), status
+        except KeyError as e:
+            logger.warning(f"Missing required field in {f.__name__}: {str(e)}")
+            response, status = error_response(f"Missing required field: {str(e)}", status_code=400)
+            return jsonify(response), status
         except Exception as e:
-            logger.error(f"Error in {f.__name__}: {str(e)}\n{traceback.format_exc()}")
-            return jsonify({
-                'success': False,
-                'error': str(e),
-                'traceback': traceback.format_exc()
-            }), 500
+            logger.error(f"Error in {f.__name__}: {str(e)}", exc_info=True)
+            response, status = error_response(
+                str(e),
+                status_code=500,
+                traceback=traceback.format_exc() if app.debug else None
+            )
+            return jsonify(response), status
     return wrapper
 
 
-def cache_result(cache_key: str, ttl_seconds: int = 300):
-    """Decorator to cache results with TTL."""
+def cache_result(cache_key: str, ttl_seconds: int = CACHE_TTL_SECONDS):
+    """
+    Decorator to cache results with TTL.
+    
+    Args:
+        cache_key: Unique cache key for this function
+        ttl_seconds: Time-to-live in seconds (default: 300)
+    """
     def decorator(f: Callable) -> Callable:
         @wraps(f)
         def wrapper(*args, **kwargs):
@@ -182,73 +217,39 @@ def api_search_dispatches():
     opt = init_optimizer()
     data = request.get_json() or {}
     
-    dispatch_id = data.get('dispatch_id') or None
-    status = data.get('status') or None
-    assignment_status = data.get('assignment_status') or None
-    priority = data.get('priority') or None
-    start_date = data.get('start_date') or None
-    end_date = data.get('end_date') or None
-    state = data.get('state') or None
-    city = data.get('city') or None
-    skill = data.get('skill') or None
-    limit = int(data.get('limit', 500))
+    # Extract and sanitize parameters
+    dispatch_id = sanitize_string(data.get('dispatch_id'))
+    status = sanitize_string(data.get('status'))
+    assignment_status = sanitize_string(data.get('assignment_status'))
+    priority = sanitize_string(data.get('priority'))
+    start_date = normalize_date(data.get('start_date'))
+    end_date = normalize_date(data.get('end_date'))
+    state = sanitize_string(data.get('state'))
+    city = sanitize_string(data.get('city'))
+    skill = sanitize_string(data.get('skill'))
+    limit = validate_limit(data.get('limit', DEFAULT_SEARCH_LIMIT))
     
-    # Build SQL query dynamically based on provided filters
-    sql = "SELECT * FROM current_dispatches WHERE 1=1"
-    params = []
+    # Build query using utility function
+    sql, params = build_dispatch_search_query(
+        dispatch_id=dispatch_id,
+        status=status,
+        assignment_status=assignment_status,
+        priority=priority,
+        start_date=start_date,
+        end_date=end_date,
+        state=state,
+        city=city,
+        skill=skill,
+        limit=limit
+    )
     
-    if dispatch_id:
-        sql += " AND Dispatch_id = ?"
-        params.append(dispatch_id)
-    
-    if status:
-        sql += " AND Status = ?"
-        params.append(status)
-    
-    if assignment_status == 'unassigned':
-        sql += " AND (Assigned_technician_id IS NULL OR Assigned_technician_id = '')"
-    elif assignment_status == 'assigned':
-        sql += " AND Assigned_technician_id IS NOT NULL AND Assigned_technician_id != ''"
-    
-    if priority:
-        sql += " AND Priority = ?"
-        params.append(priority)
-    
-    if start_date and end_date:
-        sql += " AND DATE(Appointment_start_datetime) BETWEEN ? AND ?"
-        params.append(start_date)
-        params.append(end_date)
-    elif start_date:
-        sql += " AND DATE(Appointment_start_datetime) >= ?"
-        params.append(start_date)
-    elif end_date:
-        sql += " AND DATE(Appointment_start_datetime) <= ?"
-        params.append(end_date)
-    
-    if state:
-        sql += " AND State = ?"
-        params.append(state)
-    
-    if city:
-        sql += " AND City = ?"
-        params.append(city)
-    
-    if skill:
-        sql += " AND Required_skill = ?"
-        params.append(skill)
-    
-    sql += " ORDER BY Priority DESC, Appointment_start_datetime ASC LIMIT ?"
-    params.append(limit)
-    
-    result = opt.db.query(sql, tuple(params) if params else None)
+    # Execute query
+    result = opt.db.query(sql, params)
     
     # Convert to dict format
     result_dict = df_to_dict(result)
     
-    return jsonify({
-        'success': True,
-        **result_dict
-    })
+    return jsonify(success_response(**result_dict))
 
 
 @app.route('/api/dispatches/ids', methods=['GET'])
@@ -261,15 +262,12 @@ def api_dispatch_ids():
         SELECT Dispatch_id 
         FROM current_dispatches 
         ORDER BY Dispatch_id DESC 
-        LIMIT 1000
-    """)
+        LIMIT ?
+    """, (AUTOCOMPLETE_LIMIT,))
     
     dispatch_ids = [str(row['Dispatch_id']) for row in result] if result else []
     
-    return jsonify({
-        'success': True,
-        'dispatch_ids': dispatch_ids
-    })
+    return jsonify(success_response(dispatch_ids=dispatch_ids))
 
 
 @app.route('/api/skills', methods=['GET'])
@@ -287,30 +285,36 @@ def api_skills():
     
     skills = [row['Required_skill'] for row in result] if result else []
     
-    return jsonify({
-        'success': True,
-        'skills': skills
-    })
+    return jsonify(success_response(skills=skills))
 
 
 @app.route('/api/unassigned', methods=['POST'])
 @handle_api_errors
 def api_unassigned():
-    """Get unassigned dispatches - legacy endpoint, redirects to search."""
+    """Get unassigned dispatches - legacy endpoint, uses search logic."""
     data = request.get_json() or {}
+    opt = init_optimizer()
     
-    # Convert to new search format
-    search_data = {
-        'assignment_status': 'unassigned',
-        'start_date': data.get('date'),
-        'city': data.get('city'),
-        'state': data.get('state'),
-        'limit': data.get('limit', 100)
-    }
+    # Convert legacy parameters to search format
+    start_date = normalize_date(data.get('date'))
+    city = sanitize_string(data.get('city'))
+    state = sanitize_string(data.get('state'))
+    limit = validate_limit(data.get('limit', 100))
     
-    # Call the new search endpoint
-    request._cached_json = search_data
-    return api_search_dispatches()
+    # Build query using utility function
+    sql, params = build_dispatch_search_query(
+        assignment_status='unassigned',
+        start_date=start_date,
+        city=city,
+        state=state,
+        limit=limit
+    )
+    
+    # Execute query
+    result = opt.db.query(sql, params)
+    result_dict = df_to_dict(result)
+    
+    return jsonify(success_response(**result_dict))
 
 
 @app.route('/api/technician/assignments', methods=['POST'])
@@ -320,19 +324,14 @@ def api_tech_assignments():
     opt = init_optimizer()
     data = request.get_json() or {}
     
-    tech_id = data.get('tech_id')
-    date = data.get('date') or None
+    tech_id = sanitize_string(data.get('tech_id'))
+    date = normalize_date(data.get('date'))
     
     if not tech_id:
         raise ValueError('tech_id required')
     
-    # Get structured data instead of capturing stdout
     result = opt.check_technician_assignments(tech_id, date)
-    
-    return jsonify({
-        'success': True,
-        'data': result
-    })
+    return jsonify(success_response(data=result))
 
 
 @app.route('/api/technician/availability', methods=['POST'])
@@ -493,8 +492,8 @@ def api_available_dispatches():
     opt = init_optimizer()
     data = request.get_json() or {}
     
-    tech_id = data.get('tech_id')
-    date = data.get('date')
+    tech_id = sanitize_string(data.get('tech_id'))
+    date = normalize_date(data.get('date'))
     
     if not tech_id or not date:
         raise ValueError('tech_id and date required')
@@ -502,19 +501,10 @@ def api_available_dispatches():
     result = opt.find_available_dispatches(tech_id, date)
     
     if result is None:
-        return jsonify({
-            'success': True,
-            'data': [],
-            'columns': [],
-            'count': 0
-        })
+        return jsonify(success_response(data=[], columns=[], count=0))
     
     result_dict = df_to_dict(result)
-    
-    return jsonify({
-        'success': True,
-        **result_dict
-    })
+    return jsonify(success_response(**result_dict))
 
 
 @app.route('/api/technicians/available', methods=['POST'])
@@ -524,28 +514,19 @@ def api_available_technicians():
     opt = init_optimizer()
     data = request.get_json() or {}
     
-    dispatch_id = data.get('dispatch_id')
+    dispatch_id = sanitize_string(data.get('dispatch_id'))
     enable_range_expansion = data.get('enable_range_expansion', True)
     
     if not dispatch_id:
         raise ValueError('dispatch_id required')
     
-    result = opt.find_available_technicians(str(dispatch_id), enable_range_expansion=enable_range_expansion)
+    result = opt.find_available_technicians(dispatch_id, enable_range_expansion=enable_range_expansion)
     
     if result is None:
-        return jsonify({
-            'success': True,
-            'data': [],
-            'columns': [],
-            'count': 0
-        })
+        return jsonify(success_response(data=[], columns=[], count=0))
     
     result_dict = df_to_dict(result)
-    
-    return jsonify({
-        'success': True,
-        **result_dict
-    })
+    return jsonify(success_response(**result_dict))
 
 
 @app.route('/api/technicians/list', methods=['POST'])
@@ -555,9 +536,9 @@ def api_list_technicians():
     opt = init_optimizer()
     data = request.get_json() or {}
     
-    date = data.get('date')
-    city = data.get('city') or None
-    state = data.get('state') or None
+    date = normalize_date(data.get('date'))
+    city = sanitize_string(data.get('city'))
+    state = sanitize_string(data.get('state'))
     
     if not date:
         raise ValueError('date required')
@@ -565,19 +546,10 @@ def api_list_technicians():
     result = opt.list_available_technicians(date, city, state)
     
     if result is None:
-        return jsonify({
-            'success': True,
-            'data': [],
-            'columns': [],
-            'count': 0
-        })
+        return jsonify(success_response(data=[], columns=[], count=0))
     
     result_dict = df_to_dict(result)
-    
-    return jsonify({
-        'success': True,
-        **result_dict
-    })
+    return jsonify(success_response(**result_dict))
 
 
 @app.route('/api/availability/summary', methods=['POST'])
@@ -925,6 +897,124 @@ def api_create_dispatch():
     return jsonify(result)
 
 
+@app.route('/api/dispatches/assign', methods=['POST'])
+@handle_api_errors
+def api_assign_dispatch():
+    """Assign a technician to a dispatch."""
+    opt = init_optimizer()
+    data = request.get_json() or {}
+    
+    dispatch_id = data.get('dispatch_id')
+    technician_id = sanitize_string(data.get('technician_id'))
+    
+    if not dispatch_id:
+        raise ValueError('dispatch_id is required')
+    if not technician_id:
+        raise ValueError('technician_id is required')
+    
+    logger.info(f"Assigning dispatch {dispatch_id} to technician {technician_id}")
+    
+    # Check if using local DB
+    is_local = hasattr(opt, 'db') and opt.db is not None
+    
+    if is_local:
+        # Update in local database using transaction
+        with opt.db.transaction():
+            opt.db.execute_non_query(
+                "UPDATE current_dispatches SET Assigned_technician_id = ? WHERE Dispatch_id = ?",
+                (technician_id, dispatch_id)
+            )
+        logger.info(f"✅ Assigned dispatch {dispatch_id} → {technician_id}")
+        return jsonify({
+            'success': True,
+            'message': f'Successfully assigned dispatch {dispatch_id} to technician {technician_id}'
+        })
+    else:
+        raise ValueError('Database connection not available')
+
+
+@app.route('/api/dispatches/update', methods=['POST'])
+@handle_api_errors
+def api_update_dispatch():
+    """Update dispatch information."""
+    opt = init_optimizer()
+    data = request.get_json() or {}
+    
+    dispatch_id = data.get('dispatch_id')
+    if not dispatch_id:
+        raise ValueError('dispatch_id is required')
+    
+    # Check if using local DB
+    is_local = hasattr(opt, 'db') and opt.db is not None
+    
+    if not is_local:
+        raise ValueError('Database connection not available')
+    
+    # Build update query dynamically based on provided fields
+    updates = []
+    params = []
+    
+    if 'status' in data:
+        updates.append('Status = ?')
+        params.append(data['status'])
+    
+    if 'priority' in data:
+        updates.append('Priority = ?')
+        params.append(data['priority'])
+    
+    if 'customer_address' in data:
+        updates.append('Customer_address = ?')
+        params.append(data['customer_address'])
+    
+    if 'city' in data:
+        updates.append('City = ?')
+        params.append(data['city'])
+    
+    if 'state' in data:
+        updates.append('State = ?')
+        params.append(data['state'])
+    
+    if 'appointment_datetime' in data:
+        updates.append('Appointment_start_datetime = ?')
+        params.append(data['appointment_datetime'])
+    
+    if 'duration_min' in data:
+        updates.append('Duration_min = ?')
+        params.append(int(data['duration_min']))
+    
+    if 'required_skill' in data:
+        updates.append('Required_skill = ?')
+        params.append(data['required_skill'])
+    
+    if 'dispatch_reason' in data:
+        updates.append('Dispatch_reason = ?')
+        params.append(data['dispatch_reason'])
+    
+    if 'assigned_technician_id' in data:
+        updates.append('Assigned_technician_id = ?')
+        params.append(data['assigned_technician_id'] if data['assigned_technician_id'] else None)
+    
+    if not updates:
+        raise ValueError('No fields to update')
+    
+    # Add dispatch_id to params
+    params.append(dispatch_id)
+    
+    sql = f"UPDATE current_dispatches SET {', '.join(updates)} WHERE Dispatch_id = ?"
+    
+    logger.info(f"Updating dispatch {dispatch_id}: {', '.join(updates)}")
+    
+    with opt.db.transaction():
+        opt.db.execute_non_query(sql, tuple(params))
+    
+    logger.info(f"✅ Updated dispatch {dispatch_id}")
+    
+    return jsonify({
+        'success': True,
+        'message': f'Successfully updated dispatch {dispatch_id}'
+    })
+
+
 @app.route('/api/dispatches/pending', methods=['GET'])
 @handle_api_errors
 def api_pending_dispatches():
@@ -979,20 +1069,70 @@ def api_city_capacity():
     logger.info(f"Capacity check: city={city}, state={state} on {date}")
     capacity = opt.get_city_capacity(city=city, state=state, target_date=date)
     
-    # Check if it's overview mode (returns list) or single result (returns dict)
-    if isinstance(capacity, list):
+    # Check if it's overview mode (returns dict with 'overview' key) or single result (returns dict)
+    if isinstance(capacity, dict) and 'overview' in capacity:
+        # Transform overview results to match frontend expectations
+        results = []
+        for cap in capacity.get('overview', []):
+            total_capacity_hrs = float(cap.get('total_capacity', 0))
+            assigned_hrs = float(cap.get('assigned_hours', 0))
+            available_hrs = float(cap.get('available_capacity', 0))
+            total_capacity_min = total_capacity_hrs * 60
+            allocated_min = assigned_hrs * 60
+            available_min = available_hrs * 60
+            utilization_pct = (assigned_hrs / total_capacity_hrs * 100) if total_capacity_hrs > 0 else 0
+            
+            results.append({
+                'city': cap.get('city'),
+                'state': cap.get('state'),
+                'date': date,
+                'total_technicians': cap.get('total_technicians', 0),
+                'available_technicians': cap.get('total_technicians', 0),  # All technicians are available if they have calendar entries
+                'total_capacity_hrs': total_capacity_hrs,
+                'total_capacity_min': total_capacity_min,
+                'allocated_hrs': assigned_hrs,
+                'allocated_min': allocated_min,
+                'available_hrs': available_hrs,
+                'available_min': available_min,
+                'utilization_pct': round(utilization_pct, 1),
+                'over_capacity': available_hrs < 0
+            })
+        
         return jsonify({
             'success': True,
             'overview': True,
-            'count': len(capacity),
-            'results': capacity
+            'count': len(results),
+            'results': results
         })
     else:
-        return jsonify({
+        # Single city/state mode - transform to match frontend expectations
+        total_capacity_hrs = float(capacity.get('total_capacity', 0))
+        assigned_hrs = float(capacity.get('assigned_hours', 0))
+        available_hrs = float(capacity.get('available_capacity', 0))
+        total_capacity_min = total_capacity_hrs * 60
+        allocated_min = assigned_hrs * 60
+        available_min = available_hrs * 60
+        utilization_pct = (assigned_hrs / total_capacity_hrs * 100) if total_capacity_hrs > 0 else 0
+        
+        response = {
             'success': True,
             'overview': False,
-            **capacity
-        })
+            'city': capacity.get('city'),
+            'state': capacity.get('state'),
+            'date': date,
+            'total_technicians': capacity.get('total_technicians', 0),
+            'available_technicians': capacity.get('total_technicians', 0),  # All technicians are available if they have calendar entries
+            'total_capacity_hrs': total_capacity_hrs,
+            'total_capacity_min': total_capacity_min,
+            'allocated_hrs': assigned_hrs,
+            'allocated_min': allocated_min,
+            'available_hrs': available_hrs,
+            'available_min': available_min,
+            'utilization_pct': round(utilization_pct, 1),
+            'over_capacity': available_hrs < 0
+        }
+        
+        return jsonify(response)
 
 
 @app.route('/api/capacity/check', methods=['POST'])

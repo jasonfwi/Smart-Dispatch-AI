@@ -21,6 +21,7 @@ from constants import (
     RANGE_EXPANSION_FACTOR, RANGE_EXPANSION_THRESHOLD
 )
 from populate_db import LocalDatabase, DEFAULT_DB_PATH
+from utils import calculate_distance_km, calculate_travel_time_min
 
 logger = logging.getLogger(__name__)
 
@@ -413,30 +414,142 @@ class SmartDispatchAI:
         
         return self.db.query(sql, tuple(params))
     
+    def _calculate_assigned_time_with_travel(self, tech_id: str, date: str) -> float:
+        """
+        Calculate total assigned time (duration + travel) for a technician on a date.
+        
+        Returns total time in hours, including:
+        - Sum of Duration_min for all dispatches
+        - Travel time from technician location to each dispatch
+        """
+        # Get technician location
+        tech_result = self.db.query(
+            "SELECT Latitude, Longitude FROM technicians WHERE Technician_id = ?",
+            (tech_id,)
+        )
+        
+        if not tech_result:
+            return 0.0
+        
+        tech_row = tech_result[0]
+        tech_lat = float(tech_row.get("Latitude", 0)) if tech_row.get("Latitude") else 0.0
+        tech_lon = float(tech_row.get("Longitude", 0)) if tech_row.get("Longitude") else 0.0
+        
+        # Get all dispatches for this technician on this date
+        dispatches = self.db.query("""
+            SELECT Duration_min, Customer_latitude, Customer_longitude
+            FROM current_dispatches
+            WHERE Assigned_technician_id = ?
+            AND DATE(Appointment_start_datetime) = ?
+            ORDER BY Appointment_start_datetime
+        """, (tech_id, date))
+        
+        if not dispatches:
+            return 0.0
+        
+        total_minutes = 0.0
+        prev_lat = tech_lat
+        prev_lon = tech_lon
+        
+        for dispatch in dispatches:
+            duration_min = float(dispatch.get("Duration_min", 0))
+            dispatch_lat = float(dispatch.get("Customer_latitude", 0)) if dispatch.get("Customer_latitude") else 0.0
+            dispatch_lon = float(dispatch.get("Customer_longitude", 0)) if dispatch.get("Customer_longitude") else 0.0
+            
+            # Add dispatch duration
+            total_minutes += duration_min
+            
+            # Add travel time from previous location (tech location or previous dispatch)
+            if dispatch_lat != 0.0 and dispatch_lon != 0.0 and prev_lat != 0.0 and prev_lon != 0.0:
+                distance_km = calculate_distance_km(prev_lat, prev_lon, dispatch_lat, dispatch_lon)
+                travel_time_min = calculate_travel_time_min(distance_km)
+                total_minutes += travel_time_min
+            
+            # Update previous location for next dispatch
+            if dispatch_lat != 0.0 and dispatch_lon != 0.0:
+                prev_lat = dispatch_lat
+                prev_lon = dispatch_lon
+        
+        return total_minutes / 60.0  # Convert to hours
+    
     def get_city_capacity(self, city: Optional[str] = None,
                          state: Optional[str] = None,
                          target_date: Optional[str] = None) -> Dict[str, Any]:
-        """Get capacity information for a city/state."""
+        """
+        Get capacity information for a city/state.
+        
+        Capacity calculation:
+        - Total capacity = SUM of all technicians' Max_assignments (hours) for the day
+        - Assigned capacity = SUM of (Duration_min + Travel_time_min) (converted to hours) from current_dispatches
+        - Available capacity = Total capacity - Assigned capacity
+        
+        Note: Travel time is calculated from technician location to each dispatch,
+        and between sequential dispatches for the same technician.
+        """
         if not city and not state:
             # Overview mode - get all cities/states
+            # Calculate assigned hours using Python function to include travel time
             sql = """
-                SELECT 
+                SELECT DISTINCT
                     t.City,
                     t.State,
-                    COUNT(DISTINCT t.Technician_id) as total_technicians,
-                    SUM(c.Max_assignments) as total_capacity,
-                    SUM(COALESCE(COUNT(DISTINCT d.Dispatch_id), 0)) as assigned_count
+                    t.Technician_id
                 FROM technicians t
                 JOIN technician_calendar c ON t.Technician_id = c.Technician_id
-                LEFT JOIN current_dispatches d ON d.Assigned_technician_id = t.Technician_id
-                    AND d.Appointment_start_datetime LIKE c.Date || '%'
                 WHERE c.Date = ? AND c.Available = 1
-                GROUP BY t.City, t.State
             """
             if target_date:
-                results = self.db.query(sql, (target_date,))
+                tech_results = self.db.query(sql, (target_date,))
             else:
+                tech_results = []
+            
+            # Group by city/state and calculate totals
+            city_state_data = {}
+            for tech_row in tech_results:
+                tech_city = tech_row['City']
+                tech_state = tech_row['State']
+                tech_id = tech_row['Technician_id']
+                
+                key = (tech_city, tech_state)
+                if key not in city_state_data:
+                    city_state_data[key] = {
+                        'technicians': set(),
+                        'total_capacity': 0.0,
+                        'assigned_hours': 0.0
+                    }
+                
+                city_state_data[key]['technicians'].add(tech_id)
+            
+            # Get capacity and assigned hours for each city/state
+            for (tech_city, tech_state), data in city_state_data.items():
+                # Get total capacity (sum of Max_assignments)
+                capacity_sql = """
+                    SELECT SUM(c.Max_assignments) as total_capacity
+                    FROM technicians t
+                    JOIN technician_calendar c ON t.Technician_id = c.Technician_id
+                    WHERE c.Date = ? AND c.Available = 1
+                    AND t.City = ? AND t.State = ?
+                """
+                capacity_result = self.db.query(capacity_sql, (target_date, tech_city, tech_state))
+                if capacity_result:
+                    data['total_capacity'] = float(capacity_result[0].get('total_capacity', 0) or 0)
+                
+                # Calculate assigned hours (duration + travel) for each technician
+                for tech_id in data['technicians']:
+                    assigned_hours = self._calculate_assigned_time_with_travel(tech_id, target_date)
+                    data['assigned_hours'] += assigned_hours
+            
+            # Convert to list format
                 results = []
+            for (tech_city, tech_state), data in city_state_data.items():
+                results.append({
+                    'City': tech_city,
+                    'State': tech_state,
+                    'total_technicians': len(data['technicians']),
+                    'total_capacity_hours': data['total_capacity'],
+                    'assigned_hours': data['assigned_hours'],
+                    'available_capacity': data['total_capacity'] - data['assigned_hours']
+                })
             
             return {
                 'overview': [
@@ -444,27 +557,34 @@ class SmartDispatchAI:
                         'city': r['City'],
                         'state': r['State'],
                         'total_technicians': r['total_technicians'],
-                        'total_capacity': r['total_capacity'],
-                        'assigned_count': r['assigned_count'],
-                        'available_capacity': r['total_capacity'] - r['assigned_count']
+                        'total_capacity': r['total_capacity_hours'],
+                        'assigned_hours': r['assigned_hours'],
+                        'available_capacity': r['available_capacity']
                     }
                     for r in results
                 ]
             }
         
         # Single city/state mode
+        if not target_date:
+            logger.warning("target_date is required for capacity calculation")
+            return {
+                'city': city,
+                'state': state,
+                'total_technicians': 0,
+                'total_capacity': 0.0,
+                'assigned_hours': 0.0,
+                'available_capacity': 0.0
+            }
+        
+        # Get technicians in city/state
         sql = """
-            SELECT 
-                COUNT(DISTINCT t.Technician_id) as total_technicians,
-                SUM(c.Max_assignments) as total_capacity,
-                COUNT(DISTINCT d.Dispatch_id) as assigned_count
+            SELECT DISTINCT t.Technician_id
             FROM technicians t
             JOIN technician_calendar c ON t.Technician_id = c.Technician_id
-            LEFT JOIN current_dispatches d ON d.Assigned_technician_id = t.Technician_id
-                AND d.Appointment_start_datetime LIKE c.Date || '%'
             WHERE c.Date = ? AND c.Available = 1
         """
-        params = [target_date] if target_date else []
+        params = [target_date]
         
         if city:
             sql += " AND t.City = ?"
@@ -473,26 +593,73 @@ class SmartDispatchAI:
             sql += " AND t.State = ?"
             params.append(state)
         
-        result = self.db.query(sql, tuple(params) if params else None)
+        tech_results = self.db.query(sql, tuple(params))
+        logger.debug(f"Found {len(tech_results) if tech_results else 0} technicians for city={city}, state={state}, date={target_date}")
         
-        if result:
-            r = result[0]
-            return {
-                'city': city,
-                'state': state,
-                'total_technicians': r['total_technicians'] or 0,
-                'total_capacity': r['total_capacity'] or 0,
-                'assigned_count': r['assigned_count'] or 0,
-                'available_capacity': (r['total_capacity'] or 0) - (r['assigned_count'] or 0)
-            }
+        # Get total capacity
+        capacity_sql = """
+            SELECT 
+                COUNT(DISTINCT t.Technician_id) as total_technicians,
+                COALESCE(SUM(c.Max_assignments), 0) as total_capacity_hours
+            FROM technicians t
+            JOIN technician_calendar c ON t.Technician_id = c.Technician_id
+            WHERE c.Date = ? AND c.Available = 1
+        """
+        capacity_params = [target_date]
+        
+        if city:
+            capacity_sql += " AND t.City = ?"
+            capacity_params.append(city)
+        if state:
+            capacity_sql += " AND t.State = ?"
+            capacity_params.append(state)
+        
+        logger.info(f"Capacity query: {capacity_sql}")
+        logger.info(f"Capacity params: {capacity_params}")
+        try:
+            capacity_result = self.db.query(capacity_sql, tuple(capacity_params))
+            logger.info(f"Capacity result type: {type(capacity_result)}, length: {len(capacity_result) if capacity_result else 0}")
+            logger.info(f"Capacity result: {capacity_result}")
+        except Exception as e:
+            logger.error(f"Error executing capacity query: {e}", exc_info=True)
+            capacity_result = []
+        
+        # Query should always return at least one row (even if counts are 0)
+        if capacity_result and len(capacity_result) > 0:
+            r = capacity_result[0]
+            logger.info(f"Result row type: {type(r)}, keys: {r.keys() if isinstance(r, dict) else 'not a dict'}")
+            
+            # Access values directly (query() returns list of dicts)
+            total_technicians = r.get('total_technicians', 0)
+            total_capacity_raw = r.get('total_capacity_hours', 0)
+            
+            # Convert to proper types
+            total_technicians = int(total_technicians) if total_technicians is not None else 0
+            total_capacity = float(total_capacity_raw) if total_capacity_raw is not None else 0.0
+            
+            logger.info(f"Capacity for {city}, {state} on {target_date}: {total_technicians} technicians, {total_capacity} hours")
+        else:
+            # No results - likely no technicians match the criteria
+            logger.warning(f"No capacity results found for city={city}, state={state}, date={target_date}")
+            total_technicians = 0
+            total_capacity = 0.0
+        
+        # Calculate assigned hours (duration + travel) for each technician
+        assigned_hours = 0.0
+        if tech_results:
+            for tech_row in tech_results:
+                tech_id = tech_row['Technician_id']
+                assigned_hours += self._calculate_assigned_time_with_travel(tech_id, target_date)
+        
+        available_capacity = total_capacity - assigned_hours
         
         return {
             'city': city,
             'state': state,
-            'total_technicians': 0,
-            'total_capacity': 0,
-            'assigned_count': 0,
-            'available_capacity': 0
+            'total_technicians': total_technicians,
+            'total_capacity': total_capacity,
+            'assigned_hours': assigned_hours,
+            'available_capacity': available_capacity
         }
     
     def _update_technician_calendar_capacity(self, tech_id: str, date: str, 
@@ -610,25 +777,9 @@ class SmartDispatchAI:
                 rounded_duration_min = round_minutes_to_nearest_hour(duration_min)
                 hours_to_restore = rounded_duration_min // MINUTES_PER_HOUR
             else:
-                # Calculate distance using Haversine formula
-                from math import radians, sin, cos, asin, sqrt
-                EARTH_RADIUS_KM = 6371.0
-                
-                lat1, lon1 = radians(tech_lat), radians(tech_lon)
-                lat2, lon2 = radians(dispatch_lat), radians(dispatch_lon)
-                
-                dlat = lat2 - lat1
-                dlon = lon2 - lon1
-                
-                a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
-                c = 2 * asin(sqrt(a))
-                distance_km = EARTH_RADIUS_KM * c
-                
-                # Calculate travel time
-                AVERAGE_SPEED_KMH = 40.0
-                TRAVEL_BUFFER_MINUTES = 15
-                MINUTES_PER_KM = 60.0 / AVERAGE_SPEED_KMH
-                travel_time_min = distance_km * MINUTES_PER_KM + TRAVEL_BUFFER_MINUTES
+                # Calculate distance and travel time using utility functions
+                distance_km = calculate_distance_km(tech_lat, tech_lon, dispatch_lat, dispatch_lon)
+                travel_time_min = calculate_travel_time_min(distance_km)
                 
                 # Get dispatch duration
                 duration_min = int(dispatch_row.get("Duration_min", 0)) if dispatch_row.get("Duration_min") else 0
@@ -924,11 +1075,11 @@ class SmartDispatchAI:
                             date_str = dispatch_date.strftime("%Y-%m-%d") if hasattr(dispatch_date, 'strftime') else str(dispatch_date)
                             
                             # Get technician to calculate travel time
+                            travel_time_min = 0.0  # Default if coordinates invalid
                             tech_result = self.db.query(
                                 "SELECT * FROM technicians WHERE Technician_id = ?",
                                 (dispatch.assigned_technician_id,)
                             )
-                            travel_time_min = 0.0
                             
                             if tech_result:
                                 tech_row = tech_result[0]
@@ -936,25 +1087,9 @@ class SmartDispatchAI:
                                 tech_lon = float(tech_row.get("Longitude", 0)) if tech_row.get("Longitude") else 0.0
                                 
                                 if tech_lat != 0.0 and tech_lon != 0.0 and dispatch.customer_latitude != 0.0 and dispatch.customer_longitude != 0.0:
-                                    # Calculate distance using Haversine formula
-                                    from math import radians, sin, cos, asin, sqrt
-                                    EARTH_RADIUS_KM = 6371.0
-                                    
-                                    lat1, lon1 = radians(tech_lat), radians(tech_lon)
-                                    lat2, lon2 = radians(dispatch.customer_latitude), radians(dispatch.customer_longitude)
-                                    
-                                    dlat = lat2 - lat1
-                                    dlon = lon2 - lon1
-                                    
-                                    a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
-                                    c = 2 * asin(sqrt(a))
-                                    distance_km = EARTH_RADIUS_KM * c
-                                    
-                                    # Calculate travel time
-                                    AVERAGE_SPEED_KMH = 40.0
-                                    TRAVEL_BUFFER_MINUTES = 15
-                                    MINUTES_PER_KM = 60.0 / AVERAGE_SPEED_KMH
-                                    travel_time_min = distance_km * MINUTES_PER_KM + TRAVEL_BUFFER_MINUTES
+                                    # Calculate distance and travel time using utility functions
+                                    distance_km = calculate_distance_km(tech_lat, tech_lon, dispatch.customer_latitude, dispatch.customer_longitude)
+                                    travel_time_min = calculate_travel_time_min(distance_km)
                             
                             # Total time = duration + travel time (round to nearest hour)
                             total_time_min = dispatch.duration_min + int(travel_time_min)
@@ -998,19 +1133,9 @@ class SmartDispatchAI:
                             tech_lon = float(tech_row.get("Longitude", 0)) if tech_row.get("Longitude") else 0.0
                             
                             if tech_lat != 0.0 and tech_lon != 0.0 and dispatch.customer_latitude != 0.0 and dispatch.customer_longitude != 0.0:
-                                from math import radians, sin, cos, asin, sqrt
-                                EARTH_RADIUS_KM = 6371.0
-                                lat1, lon1 = radians(tech_lat), radians(tech_lon)
-                                lat2, lon2 = radians(dispatch.customer_latitude), radians(dispatch.customer_longitude)
-                                dlat = lat2 - lat1
-                                dlon = lon2 - lon1
-                                a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
-                                c = 2 * asin(sqrt(a))
-                                distance_km = EARTH_RADIUS_KM * c
-                                AVERAGE_SPEED_KMH = 40.0
-                                TRAVEL_BUFFER_MINUTES = 15
-                                MINUTES_PER_KM = 60.0 / AVERAGE_SPEED_KMH
-                                travel_time_min = distance_km * MINUTES_PER_KM + TRAVEL_BUFFER_MINUTES
+                                # Calculate distance and travel time using utility functions
+                                distance_km = calculate_distance_km(tech_lat, tech_lon, dispatch.customer_latitude, dispatch.customer_longitude)
+                                travel_time_min = calculate_travel_time_min(distance_km)
                         
                         total_time_min = dispatch.duration_min + int(travel_time_min)
                         rounded_total_min = round_minutes_to_nearest_hour(total_time_min)
@@ -1029,10 +1154,9 @@ class SmartDispatchAI:
             # Clear pending list (only after successful commit)
             self._pending_dispatches.clear()
             
-            # Reload data to include new dispatches
-            logger.debug("Reloading data to include new dispatches...")
+            # Note: No need to reload DataFrames - we query SQLite directly
+            logger.debug("Data committed successfully - queries will use updated database")
             old_assignments = dict(self._previous_assignments)  # Copy for comparison
-            self.curr_df, self.tech_df, self.cal_df, self.history_df = self._load_data()
             
             # Check for unassigned dispatches and restore capacity
             restored_count = 0
@@ -1101,12 +1225,12 @@ class SmartDispatchAI:
                     
                     # Calculate hours if not already tracked
                     if dispatch_id not in self._previous_assignments:
+                        travel_time_min = 0.0  # Default if coordinates invalid
                         tech_result = self.db.query(
                             "SELECT Latitude, Longitude FROM technicians WHERE Technician_id = ?",
                             (tech_id,)
                         )
                         
-                        travel_time_min = 0.0
                         if tech_result:
                             tech_row = tech_result[0]
                             tech_lat = float(tech_row.get("Latitude", 0)) if tech_row.get("Latitude") else 0.0
@@ -1115,19 +1239,9 @@ class SmartDispatchAI:
                             dispatch_lon = float(row.get("Customer_longitude", 0)) if row.get("Customer_longitude") else 0.0
                             
                             if tech_lat != 0.0 and tech_lon != 0.0 and dispatch_lat != 0.0 and dispatch_lon != 0.0:
-                                from math import radians, sin, cos, asin, sqrt
-                                EARTH_RADIUS_KM = 6371.0
-                                lat1, lon1 = radians(tech_lat), radians(tech_lon)
-                                lat2, lon2 = radians(dispatch_lat), radians(dispatch_lon)
-                                dlat = lat2 - lat1
-                                dlon = lon2 - lon1
-                                a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
-                                c = 2 * asin(sqrt(a))
-                                distance_km = EARTH_RADIUS_KM * c
-                                AVERAGE_SPEED_KMH = 40.0
-                                TRAVEL_BUFFER_MINUTES = 15
-                                MINUTES_PER_KM = 60.0 / AVERAGE_SPEED_KMH
-                                travel_time_min = distance_km * MINUTES_PER_KM + TRAVEL_BUFFER_MINUTES
+                                # Calculate distance and travel time using utility functions
+                                distance_km = calculate_distance_km(tech_lat, tech_lon, dispatch_lat, dispatch_lon)
+                                travel_time_min = calculate_travel_time_min(distance_km)
                         
                         duration_min = int(row.get("Duration_min", 0)) if row.get("Duration_min") else 0
                         total_time_min = duration_min + int(travel_time_min)
@@ -1272,13 +1386,20 @@ class SmartDispatchAI:
             }
     
     def check_capacity_available(self, city: str, state: str, date: str, duration_min: int) -> Dict[str, Any]:
-        """Check if there is sufficient capacity to add a dispatch."""
+        """
+        Check if there is sufficient capacity to add a dispatch.
+        
+        Capacity is calculated as:
+        - Total capacity = SUM(Max_assignments) from technician_calendar (in hours)
+        - Assigned capacity = SUM(Duration_min) from current_dispatches (converted to hours)
+        - Available capacity = Total - Assigned (in hours)
+        """
         capacity = self.get_city_capacity(city, state, date)
         
-        # Handle both dict and list responses from get_city_capacity
-        if isinstance(capacity, list):
+        # Handle overview mode (dict with 'overview' key)
+        if isinstance(capacity, dict) and 'overview' in capacity:
             # Overview mode - find matching city/state
-            matching = next((c for c in capacity if c.get('city') == city and c.get('state') == state), None)
+            matching = next((c for c in capacity.get('overview', []) if c.get('city') == city and c.get('state') == state), None)
             if not matching:
                 return {
                     "available": False,
@@ -1287,22 +1408,25 @@ class SmartDispatchAI:
                 }
             capacity = matching
         
-        available_min = capacity.get("available_capacity_min", 0)
+        # Get available capacity (already in hours)
+        available_capacity_hours = float(capacity.get("available_capacity", 0))
+        duration_hours = duration_min / 60.0
         
-        if available_min >= duration_min:
+        if available_capacity_hours >= duration_hours:
             return {
                 "available": True,
                 "capacity": capacity,
-                "message": f"Sufficient capacity available ({available_min} min available, {duration_min} min needed)"
+                "message": f"Sufficient capacity available ({available_capacity_hours:.1f} hrs available, {duration_hours:.1f} hrs needed)"
             }
         else:
-            shortage = duration_min - available_min
+            shortage_hours = duration_hours - available_capacity_hours
+            shortage_min = int(shortage_hours * MINUTES_PER_HOUR)
             return {
                 "available": False,
                 "capacity": capacity,
-                "shortage_min": shortage,
-                "shortage_hrs": round(shortage / 60, 1),
-                "message": f"Insufficient capacity (need {duration_min} min, only {available_min} min available, shortage: {shortage} min)"
+                "shortage_min": shortage_min,
+                "shortage_hrs": round(shortage_hours, 1),
+                "message": f"Insufficient capacity (need {duration_hours:.1f} hrs, only {available_capacity_hours:.1f} hrs available, shortage: {shortage_hours:.1f} hrs)"
             }
     
     def create_dispatch(self,
@@ -1354,8 +1478,13 @@ class SmartDispatchAI:
         
         if not capacity_check["available"]:
             capacity = capacity_check["capacity"]
+            available_hours = capacity.get('available_capacity', 0)
+            total_capacity = capacity.get('total_capacity', 0)
+            assigned_hours = capacity.get('assigned_hours', 0)
             error_msg = (f"Insufficient capacity in {city}, {state} on {date_str}:\n"
-                        f"  Available: {capacity.get('available_capacity_min', 0) / 60:.1f} hrs\n"
+                        f"  Total capacity: {total_capacity:.1f} hrs\n"
+                        f"  Assigned: {assigned_hours:.1f} hrs\n"
+                        f"  Available: {available_hours:.1f} hrs\n"
                         f"  This dispatch needs: {duration_min / 60:.1f} hrs\n"
                         f"  Shortage: {capacity_check.get('shortage_hrs', 0)} hrs")
             logger.error(error_msg)
@@ -1382,29 +1511,63 @@ class SmartDispatchAI:
         
         logger.info(f"Created dispatch with ID: {new_dispatch.dispatch_id}")
         
-        # Auto-assign if requested (simplified - would need full implementation)
-        if auto_assign:
-            logger.warning("Auto-assign not fully implemented in local mode")
-            # TODO: Implement auto-assignment logic
+        assigned_technician_id = None
+        assigned_technician_name = None
         
-        # Add to pending list
+        # Add to pending list first (needed for commit)
         self._pending_dispatches.append(new_dispatch)
         
-        # Commit to database if requested
-        if commit_to_db:
+        # If auto-assigning, we need to commit first so dispatch exists in DB for find_available_technicians
+        # If not auto-assigning but commit_to_db is True, commit now
+        should_commit_now = commit_to_db or auto_assign
+        
+        if should_commit_now:
             commit_result = self.commit_pending_dispatches()
             if not commit_result["success"]:
                 return commit_result
         
+        # Auto-assign if requested (after commit so dispatch exists in DB)
+        if auto_assign:
+            logger.info(f"Attempting auto-assignment for dispatch {new_dispatch.dispatch_id}")
+            available_techs = self.find_available_technicians(str(new_dispatch.dispatch_id), enable_range_expansion=True)
+            
+            if available_techs and len(available_techs) > 0:
+                # Use scoring to find best technician
+                best_tech = max(available_techs, key=lambda t: t.get("Score", 0))
+                assigned_technician_id = best_tech.get("Technician_id")
+                assigned_technician_name = best_tech.get("Name", "")
+                
+                logger.info(f"Auto-assigned dispatch {new_dispatch.dispatch_id} to technician {assigned_technician_id} ({assigned_technician_name})")
+                
+                # Update the dispatch in database with assigned technician
+                try:
+                    with self.db.transaction():
+                        self.db.execute_non_query(
+                            "UPDATE current_dispatches SET Assigned_technician_id = ? WHERE Dispatch_id = ?",
+                            (assigned_technician_id, new_dispatch.dispatch_id)
+                        )
+                    logger.info(f"Updated database with assignment: {new_dispatch.dispatch_id} → {assigned_technician_id}")
+                except Exception as e:
+                    logger.error(f"Error updating assignment in database: {e}")
+            else:
+                logger.warning(f"No available technicians found for dispatch {new_dispatch.dispatch_id}")
+        
         # Increment dispatch ID for next dispatch
         self._next_dispatch_id += 1
         
-        return {
+        result = {
             "success": True,
             "dispatch": new_dispatch.to_dict(),
-            "assigned": new_dispatch.assigned_technician_id is not None,
-            "committed": commit_to_db
+            "assigned": assigned_technician_id is not None,
+            "committed": should_commit_now
         }
+        
+        # Add assignment details if auto-assigned
+        if auto_assign and assigned_technician_id:
+            result["assigned_technician_id"] = assigned_technician_id
+            result["assigned_technician_name"] = assigned_technician_name
+        
+        return result
     
     def close(self):
         """Close database connection."""
@@ -1527,15 +1690,8 @@ class SmartDispatchAI:
                 if tech_lat == 0.0 or tech_lon == 0.0 or dispatch_lat == 0.0 or dispatch_lon == 0.0:
                     continue
                 
-                # Calculate distance
-                from math import radians, sin, cos, asin, sqrt
-                lat1, lon1 = radians(tech_lat), radians(tech_lon)
-                lat2, lon2 = radians(dispatch_lat), radians(dispatch_lon)
-                dlat = lat2 - lat1
-                dlon = lon2 - lon1
-                a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
-                c = 2 * asin(sqrt(a))
-                distance_km = EARTH_RADIUS_KM * c
+                # Calculate distance and travel time using utility functions
+                distance_km = calculate_distance_km(tech_lat, tech_lon, dispatch_lat, dispatch_lon)
                 
                 # Check if within range
                 if distance_km > self.max_range_km:
@@ -1544,7 +1700,7 @@ class SmartDispatchAI:
                     # Could implement range expansion logic here
                 
                 # Calculate travel time
-                travel_time_min = distance_km * MINUTES_PER_KM + TRAVEL_BUFFER_MINUTES
+                travel_time_min = calculate_travel_time_min(distance_km)
                 
                 # Get assigned minutes for utilization
                 assigned_minutes = self._get_assigned_minutes(tech["Technician_id"], dispatch_date)

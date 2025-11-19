@@ -17,8 +17,37 @@ const state = {
     currentQueryContext: null, // Track what type of query was last run
     modalOriginalData: null, // Store original data for filtering in results modal
     techListOriginalData: null, // Store original data for filtering in tech list modal
-    autoAssignData: null // Store auto-assignment data for commit
+    autoAssignData: null, // Store auto-assignment data for commit
+    editingDispatch: null, // Store dispatch being edited
+    availableTechnicians: null, // Store available technicians for assignment
+    modalZIndex: 2000 // Base z-index for modals, increments for stacking
 };
+
+// Modal stacking helper functions
+function getNextModalZIndex() {
+    // Find the highest current z-index among active modals
+    const modals = document.querySelectorAll('.modal.active');
+    let maxZIndex = state.modalZIndex;
+    
+    modals.forEach(modal => {
+        const zIndex = parseInt(window.getComputedStyle(modal).zIndex) || state.modalZIndex;
+        if (zIndex > maxZIndex) {
+            maxZIndex = zIndex;
+        }
+    });
+    
+    // Return next z-index (increment by 100 for easy stacking)
+    return maxZIndex + 100;
+}
+
+function setModalZIndex(modal) {
+    if (modal && modal.classList.contains('active')) {
+        const zIndex = getNextModalZIndex();
+        modal.style.zIndex = zIndex;
+        return zIndex;
+    }
+    return null;
+}
 
 // ================================
 // INITIALIZATION
@@ -817,8 +846,9 @@ async function createDispatch() {
     const skill = document.getElementById('createSkill').value.trim();
     const priority = document.getElementById('createPriority').value.trim();
     const reason = document.getElementById('createReason').value.trim() || 'N/A';
-    const autoAssign = document.getElementById('createAutoAssign').checked;
-    const commitToDb = document.getElementById('createCommit').checked;
+    // Always use auto-assign logic (user requested)
+    const autoAssign = true; // Always enabled
+    const commitToDb = document.getElementById('createCommit')?.checked || true; // Default to true to commit immediately
     
     // Validation
     if (!address || !city || !stateValue || !dateStr || !timeStr || !duration || !skill || !priority) {
@@ -854,8 +884,10 @@ async function createDispatch() {
         
         if (data.success) {
             logMessage(`✅ Dispatch created successfully! ID: ${data.dispatch.dispatch_id}`, 'success');
-            if (data.assigned) {
-                logMessage(`✅ Auto-assigned to technician`, 'success');
+            if (data.assigned && data.assigned_technician_id) {
+                logMessage(`✅ Auto-assigned to technician: ${data.assigned_technician_name || data.assigned_technician_id} (${data.assigned_technician_id})`, 'success');
+            } else if (data.assigned === false) {
+                logMessage(`⚠️ Dispatch created but no available technician found for auto-assignment`, 'warning');
             }
             
             // Clear form
@@ -894,33 +926,49 @@ async function checkCapacityForDispatch() {
     
     try {
         showLoading(true);
+        logMessage('🔍 Checking capacity...', 'header');
         
-        const response = await fetch('/api/capacity/check', {
+        // Use the same endpoint as the main capacity check
+        const response = await fetch('/api/capacity/city', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({
                 city: city,
                 state: stateValue,
-                date: dateStr,
-                duration_min: duration
+                date: dateStr
             })
         });
         
         const data = await response.json();
         
         if (data.success) {
-            const cap = data.capacity;
-            if (data.available) {
-                logMessage(`✅ Capacity available: ${cap.available_hrs} hrs (${cap.utilization_pct}% utilized)`, 'success');
+            if (data.overview) {
+                // Overview mode - show modal with results
+                showCapacityModal(data.results, true, dateStr, stateValue);
             } else {
-                logMessage(`❌ Insufficient capacity: ${cap.allocated_hrs} hrs allocated, ${cap.total_capacity_hrs} hrs total`, 'error');
+                // Single city/state mode - show modal
+                const cap = data;
+                showCapacityModal([cap], false, dateStr, stateValue);
+                
+                // Also check if there's enough capacity for the requested duration
+                const availableHrs = cap.available_hrs || 0;
+                const neededHrs = duration / 60.0;
+                
+                if (availableHrs >= neededHrs) {
+                    logMessage(`✅ Capacity available: ${availableHrs.toFixed(1)} hrs available, need ${neededHrs.toFixed(1)} hrs`, 'success');
+                } else {
+                    const shortage = neededHrs - availableHrs;
+                    logMessage(`⚠️ Insufficient capacity: ${availableHrs.toFixed(1)} hrs available, need ${neededHrs.toFixed(1)} hrs (shortage: ${shortage.toFixed(1)} hrs)`, 'warning');
+                }
             }
         } else {
             logMessage(`❌ Capacity check failed: ${data.error}`, 'error');
+            alert(`Capacity check failed: ${data.error}`);
         }
     } catch (error) {
         logMessage(`❌ Error checking capacity: ${error.message}`, 'error');
         console.error(error);
+        alert(`Error checking capacity: ${error.message}`);
     } finally {
         showLoading(false);
     }
@@ -976,7 +1024,7 @@ async function searchDispatches() {
         title = 'Unassigned Dispatches';
     } else if (assignment === 'assigned') {
         title = 'Assigned Dispatches';
-    }
+        }
     
     await executeQuery('/api/dispatches/search', params, title, 'dispatch');
 }
@@ -1097,8 +1145,8 @@ async function loadDispatchIds() {
     } catch (error) {
         console.warn('Failed to load dispatch IDs:', error);
     }
-}
-
+    }
+    
 // Load skills for dispatch search
 async function loadDispatchSkills() {
     try {
@@ -1649,6 +1697,7 @@ function showCapacityModal(data, isOverview, date, stateFilter) {
     }
     
     modal.classList.add('active');
+    setModalZIndex(modal);
 }
 
 // Show availability details in a user-friendly format
@@ -1953,6 +2002,7 @@ function showAvailabilityModal(data, isMultiple, date, city, state) {
     }
     
     modal.classList.add('active');
+    setModalZIndex(modal);
 }
 
 function showResultsModal(title, data, columns) {
@@ -2037,6 +2087,7 @@ function showResultsModal(title, data, columns) {
     }
     
     modal.classList.add('active');
+    setModalZIndex(modal);
     
     // Focus search input if it exists
     setTimeout(() => {
@@ -2238,6 +2289,7 @@ function showAutoAssignModal(results, stats, date, stateValue, city) {
     }
     
     modal.classList.add('active');
+    setModalZIndex(modal);
 }
 
 // Find available technicians for a dispatch (for manual override)
@@ -2324,6 +2376,7 @@ function showTechSelectionModal(technicians, dispatchId, rowIndex) {
     
     modalContent.innerHTML = html;
     modal.classList.add('active');
+    setModalZIndex(modal);
 }
 
 // Select technician for assignment override
@@ -2520,7 +2573,9 @@ function editCell(rowIndex, column) {
         editHelp.textContent = `Press Enter to save, Esc to cancel`;
     }
     
-    document.getElementById('editModal').classList.add('active');
+    const editModal = document.getElementById('editModal');
+    editModal.classList.add('active');
+    setModalZIndex(editModal);
     setTimeout(() => {
         editInput.focus();
         editInput.select();
@@ -2708,7 +2763,17 @@ function populateFormFromRow(rowIndex) {
     
     try {
         if (context === 'dispatch') {
+            // Check if this is an unassigned dispatch - show edit modal instead
+            const assignmentStatus = row.Assignment_status || row.assignment_status || '';
+            const assignedTech = row.Assigned_technician_id || row.assigned_technician_id || '';
+            
+            if (assignmentStatus.toLowerCase() === 'unassigned' || !assignedTech) {
+                // Show edit dispatch modal
+                showEditDispatchModal(row);
+            } else {
+                // Regular dispatch - populate create form
             populateDispatchForm(row);
+            }
         } else if (context === 'technician') {
             populateTechnicianForm(row);
         } else {
@@ -2873,6 +2938,455 @@ function populateTechnicianForm(row) {
     
     // Switch to Technicians tab
     switchTab('technician');
+}
+
+// ================================
+// EDIT DISPATCH MODAL FUNCTIONS
+// ================================
+
+// Show edit dispatch modal with form fields
+function showEditDispatchModal(row) {
+    const modal = document.getElementById('editDispatchModal');
+    const content = document.getElementById('editDispatchContent');
+    
+    if (!modal || !content) {
+        logMessage('❌ Edit dispatch modal not found', 'error');
+        return;
+    }
+    
+    // Store current dispatch data
+    state.editingDispatch = row;
+    
+    // Extract values with fallbacks
+    const dispatchId = row.Dispatch_id || row.dispatch_id || '';
+    const address = row.Customer_address || row.Address || row.address || row.customer_address || '';
+    const city = row.City || row.city || '';
+    const stateValue = row.State || row.state || '';
+    const appointmentDt = row.Appointment_start_datetime || row.appointment_start_datetime || row.Appointment_datetime || row.appointment_datetime || '';
+    const duration = row.Duration_min || row.duration_min || row.Duration || row.duration || '';
+    const skill = row.Required_skill || row.required_skill || row.Skill || row.skill || '';
+    const priority = row.Priority || row.priority || '';
+    const reason = row.Dispatch_reason || row.dispatch_reason || row.Reason || row.reason || '';
+    const status = row.Status || row.status || '';
+    const assignedTech = row.Assigned_technician_id || row.assigned_technician_id || '';
+    const assignedTechName = row.Assigned_technician_name || row.assigned_technician_name || '';
+    
+    // Parse datetime
+    let dateValue = '';
+    let timeValue = '';
+    if (appointmentDt) {
+        const dt = new Date(appointmentDt);
+        if (!isNaN(dt.getTime())) {
+            dateValue = dt.toISOString().split('T')[0];
+            const hours = String(dt.getHours()).padStart(2, '0');
+            const minutes = String(dt.getMinutes()).padStart(2, '0');
+            timeValue = `${hours}:${minutes}`;
+        }
+    }
+    
+    // Build form HTML
+    let html = `
+        <div class="form-section">
+            <h4 style="margin-bottom: 1rem;"><i class="fas fa-info-circle"></i> Dispatch Information</h4>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Dispatch ID</label>
+                    <input type="text" id="editDispatchId" value="${escapeHtml(dispatchId)}" readonly class="form-control" style="background-color: #f8f9fa;">
+                </div>
+                <div class="form-group">
+                    <label>Status</label>
+                    <select id="editDispatchStatus" class="form-control">
+                        <option value="Pending" ${status === 'Pending' ? 'selected' : ''}>Pending</option>
+                        <option value="Scheduled" ${status === 'Scheduled' ? 'selected' : ''}>Scheduled</option>
+                        <option value="In Progress" ${status === 'In Progress' ? 'selected' : ''}>In Progress</option>
+                        <option value="Completed" ${status === 'Completed' ? 'selected' : ''}>Completed</option>
+                        <option value="Cancelled" ${status === 'Cancelled' ? 'selected' : ''}>Cancelled</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Priority</label>
+                    <select id="editDispatchPriority" class="form-control">
+                        <option value="Low" ${priority === 'Low' ? 'selected' : ''}>Low</option>
+                        <option value="Medium" ${priority === 'Medium' ? 'selected' : ''}>Medium</option>
+                        <option value="High" ${priority === 'High' ? 'selected' : ''}>High</option>
+                        <option value="Critical" ${priority === 'Critical' ? 'selected' : ''}>Critical</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Customer Address <span style="color: red;">*</span></label>
+                    <input type="text" id="editDispatchAddress" value="${escapeHtml(address)}" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label>City <span style="color: red;">*</span></label>
+                    <input type="text" id="editDispatchCity" value="${escapeHtml(city)}" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label>State <span style="color: red;">*</span></label>
+                    <input type="text" id="editDispatchState" value="${escapeHtml(stateValue)}" class="form-control" required>
+                </div>
+            </div>
+            
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Appointment Date <span style="color: red;">*</span></label>
+                    <input type="date" id="editDispatchDate" value="${dateValue}" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label>Appointment Time <span style="color: red;">*</span></label>
+                    <input type="time" id="editDispatchTime" value="${timeValue}" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label>Duration (minutes) <span style="color: red;">*</span></label>
+                    <input type="number" id="editDispatchDuration" value="${duration}" class="form-control" min="1" required>
+                </div>
+            </div>
+            
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Required Skill <span style="color: red;">*</span></label>
+                    <input type="text" id="editDispatchSkill" value="${escapeHtml(skill)}" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label>Dispatch Reason</label>
+                    <input type="text" id="editDispatchReason" value="${escapeHtml(reason)}" class="form-control">
+                </div>
+            </div>
+            
+            <div class="form-group" style="margin-top: 1rem;">
+                <label>Assigned Technician</label>
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <input type="text" id="editDispatchAssignedTech" value="${escapeHtml(assignedTech)}" 
+                           class="form-control" placeholder="Technician ID" readonly 
+                           style="background-color: ${assignedTech ? '#e7f3ff' : '#f8f9fa'};">
+                    <input type="text" id="editDispatchAssignedTechName" value="${escapeHtml(assignedTechName)}" 
+                           class="form-control" placeholder="Technician Name" readonly 
+                           style="background-color: ${assignedTech ? '#e7f3ff' : '#f8f9fa'};">
+                </div>
+                ${!assignedTech ? '<p class="helper-text" style="margin-top: 0.5rem; color: #dc3545;"><i class="fas fa-exclamation-circle"></i> No technician assigned</p>' : ''}
+            </div>
+            
+        </div>
+    `;
+    
+    content.innerHTML = html;
+    
+    // Show/hide assign button based on whether tech is assigned
+    const assignBtn = document.getElementById('assignTechBtn');
+    const findTechBtn = document.getElementById('findTechBtn');
+    if (assignBtn && findTechBtn) {
+        if (assignedTech) {
+            assignBtn.style.display = 'none';
+            findTechBtn.textContent = 'Change Technician';
+        } else {
+            assignBtn.style.display = 'inline-block';
+            findTechBtn.textContent = 'Find Available Technicians';
+        }
+    }
+    
+    modal.classList.add('active');
+    setModalZIndex(modal);
+}
+
+function closeEditDispatchModal() {
+    const modal = document.getElementById('editDispatchModal');
+    if (modal) {
+        modal.classList.remove('active');
+        state.editingDispatch = null;
+        state.availableTechnicians = null;
+    }
+}
+
+async function findTechForEditDispatch() {
+    if (!checkInitialized()) {
+        logMessage('❌ System not initialized', 'error');
+        return;
+    }
+    
+    if (!state.editingDispatch) {
+        logMessage('❌ No dispatch being edited', 'error');
+        console.error('state.editingDispatch:', state.editingDispatch);
+        return;
+    }
+    
+    const dispatchId = state.editingDispatch.Dispatch_id || state.editingDispatch.dispatch_id;
+    if (!dispatchId) {
+        logMessage('❌ Dispatch ID not found in editing dispatch', 'error');
+        console.error('state.editingDispatch:', state.editingDispatch);
+        return;
+    }
+    
+    try {
+        showLoading(true);
+        logMessage(`🔍 Finding available technicians for dispatch ${dispatchId}...`, 'header');
+        
+        // Convert dispatch_id to string (API expects string)
+        const dispatchIdStr = String(dispatchId);
+        
+        const response = await fetch('/api/technicians/available', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                dispatch_id: dispatchIdStr,
+                enable_range_expansion: true
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        
+        console.log('API response:', data);
+        
+        if (data.success && data.data && data.data.length > 0) {
+            state.availableTechnicians = data.data;
+            // Show technician selection modal instead of inline display
+            showTechSelectionModalForEdit(data.data, dispatchId);
+            logMessage(`✅ Found ${data.data.length} available technician(s)`, 'success');
+        } else {
+            const message = data.error || `No available technicians found for dispatch ${dispatchId}`;
+            logMessage(`⚠️ ${message}`, 'warning');
+            alert(message);
+        }
+    } catch (error) {
+        logMessage(`❌ Error: ${error.message}`, 'error');
+        console.error('Error finding technicians:', error);
+        alert(`Error finding technicians: ${error.message}`);
+    } finally {
+        showLoading(false);
+    }
+}
+
+// Show technician selection modal for edit dispatch (separate modal)
+function showTechSelectionModalForEdit(technicians, dispatchId) {
+    const modal = document.getElementById('techListModal');
+    const modalTitle = document.getElementById('techListModalTitle');
+    const modalContent = document.getElementById('techListModalContent');
+    
+    if (!modal || !modalTitle || !modalContent) {
+        logMessage('❌ Technician selection modal not found', 'error');
+        return;
+    }
+    
+    modalTitle.textContent = `Select Technician for Dispatch ${dispatchId}`;
+    
+    let html = `
+        <div class="modal-table-container" style="max-height: 60vh; overflow-y: auto;">
+            <table class="data-table modal-table">
+                <thead>
+                    <tr>
+                        <th>Technician ID</th>
+                        <th>Name</th>
+                        <th>Distance (km)</th>
+                        <th>Travel Time (min)</th>
+                        <th>Score</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+    
+    technicians.forEach(tech => {
+        const techId = tech.Technician_id || tech.technician_id || '';
+        const techName = tech.Name || tech.name || '';
+        const distance = (tech.Distance_km || tech.distance_km || 0).toFixed(2);
+        const travelTime = Math.round(tech.Travel_time_min || tech.travel_time_min || 0);
+        const score = (tech.Score || tech.score || 0).toFixed(1);
+        
+        html += `
+            <tr>
+                <td><strong>${escapeHtml(techId)}</strong></td>
+                <td>${escapeHtml(techName)}</td>
+                <td>${distance}</td>
+                <td>${travelTime}</td>
+                <td><strong>${score}</strong></td>
+                <td>
+                    <button class="btn btn-sm btn-primary" onclick="selectTechForEditDispatch('${escapeHtml(techId)}', '${escapeHtml(techName.replace(/'/g, "\\'"))}')">
+                        <i class="fas fa-check"></i> Select
+                    </button>
+                </td>
+            </tr>
+        `;
+    });
+    
+    html += `
+                </tbody>
+            </table>
+        </div>
+    `;
+    
+    modalContent.innerHTML = html;
+    modal.classList.add('active');
+    setModalZIndex(modal);
+}
+
+function selectTechForEditDispatch(techId, techName) {
+    // Update the edit dispatch modal fields
+    const techIdInput = document.getElementById('editDispatchAssignedTech');
+    const techNameInput = document.getElementById('editDispatchAssignedTechName');
+    
+    if (techIdInput) techIdInput.value = techId;
+    if (techNameInput) techNameInput.value = techName;
+    
+    // Update background color to show assignment
+    if (techIdInput) techIdInput.style.backgroundColor = '#e7f3ff';
+    if (techNameInput) techNameInput.style.backgroundColor = '#e7f3ff';
+    
+    // Show assign button now that a tech is selected
+    const assignBtn = document.getElementById('assignTechBtn');
+    if (assignBtn) {
+        assignBtn.style.display = 'inline-block';
+    }
+    
+    // Close the technician selection modal (returns to edit dispatch modal)
+    closeTechListModal();
+    
+    logMessage(`✅ Selected technician: ${techName} (${techId})`, 'success');
+}
+
+async function assignTechToDispatch() {
+    if (!checkInitialized() || !state.editingDispatch) return;
+    
+    const dispatchId = state.editingDispatch.Dispatch_id || state.editingDispatch.dispatch_id;
+    const techIdInput = document.getElementById('editDispatchAssignedTech');
+    const techId = techIdInput ? techIdInput.value.trim() : '';
+    
+    if (!dispatchId) {
+        logMessage('❌ Dispatch ID not found', 'error');
+        return;
+    }
+    
+    if (!techId) {
+        logMessage('❌ Please select a technician first', 'error');
+        alert('Please find and select an available technician first.');
+        return;
+    }
+    
+    if (!confirm(`Assign dispatch ${dispatchId} to technician ${techId}?`)) {
+        return;
+    }
+    
+    try {
+        showLoading(true);
+        logMessage(`🔄 Assigning dispatch ${dispatchId} to technician ${techId}...`, 'header');
+        
+        const response = await fetch('/api/dispatches/assign', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                dispatch_id: dispatchId,
+                technician_id: techId
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            logMessage(`✅ Successfully assigned dispatch ${dispatchId} to technician ${techId}`, 'success');
+            alert(`Successfully assigned dispatch ${dispatchId} to technician ${techId}`);
+            closeEditDispatchModal();
+            // Refresh the search results if modal is still open
+            if (state.currentQueryContext === 'dispatch') {
+                // Trigger a refresh of the search results
+                const searchBtn = document.querySelector('#tab-queries button[onclick*="searchDispatches"]');
+                if (searchBtn) searchBtn.click();
+            }
+        } else {
+            logMessage(`❌ Assignment failed: ${data.error || 'Unknown error'}`, 'error');
+            alert(`Assignment failed: ${data.error || 'Unknown error'}`);
+        }
+    } catch (error) {
+        logMessage(`❌ Error: ${error.message}`, 'error');
+        console.error(error);
+        alert(`Error assigning technician: ${error.message}`);
+    } finally {
+        showLoading(false);
+    }
+}
+
+async function saveDispatchChanges() {
+    if (!checkInitialized() || !state.editingDispatch) return;
+    
+    const dispatchId = state.editingDispatch.Dispatch_id || state.editingDispatch.dispatch_id;
+    if (!dispatchId) {
+        logMessage('❌ Dispatch ID not found', 'error');
+        return;
+    }
+    
+    // Collect form values
+    const status = document.getElementById('editDispatchStatus')?.value || '';
+    const priority = document.getElementById('editDispatchPriority')?.value || '';
+    const address = document.getElementById('editDispatchAddress')?.value.trim() || '';
+    const city = document.getElementById('editDispatchCity')?.value.trim() || '';
+    const stateValue = document.getElementById('editDispatchState')?.value.trim() || '';
+    const date = document.getElementById('editDispatchDate')?.value || '';
+    const time = document.getElementById('editDispatchTime')?.value || '';
+    const duration = parseInt(document.getElementById('editDispatchDuration')?.value || 0);
+    const skill = document.getElementById('editDispatchSkill')?.value.trim() || '';
+    const reason = document.getElementById('editDispatchReason')?.value.trim() || '';
+    const assignedTech = document.getElementById('editDispatchAssignedTech')?.value.trim() || '';
+    
+    // Validation
+    if (!address || !city || !stateValue || !date || !time || !duration || !skill) {
+        alert('Please fill in all required fields.');
+        return;
+    }
+    
+    // Combine date and time
+    const appointmentDatetime = `${date}T${time}:00`;
+    
+    if (!confirm(`Save changes to dispatch ${dispatchId}?`)) {
+        return;
+    }
+    
+    try {
+        showLoading(true);
+        logMessage(`💾 Saving changes to dispatch ${dispatchId}...`, 'header');
+        
+        const response = await fetch('/api/dispatches/update', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                dispatch_id: dispatchId,
+                status: status,
+                priority: priority,
+                customer_address: address,
+                city: city,
+                state: stateValue,
+                appointment_datetime: appointmentDatetime,
+                duration_min: duration,
+                required_skill: skill,
+                dispatch_reason: reason,
+                assigned_technician_id: assignedTech || null
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            logMessage(`✅ Successfully saved changes to dispatch ${dispatchId}`, 'success');
+            alert(`Successfully saved changes to dispatch ${dispatchId}`);
+            closeEditDispatchModal();
+            // Refresh the search results
+            if (state.currentQueryContext === 'dispatch') {
+                const searchBtn = document.querySelector('#tab-queries button[onclick*="searchDispatches"]');
+                if (searchBtn) searchBtn.click();
+            }
+        } else {
+            logMessage(`❌ Save failed: ${data.error || 'Unknown error'}`, 'error');
+            alert(`Save failed: ${data.error || 'Unknown error'}`);
+        }
+    } catch (error) {
+        logMessage(`❌ Error: ${error.message}`, 'error');
+        console.error(error);
+        alert(`Error saving changes: ${error.message}`);
+    } finally {
+        showLoading(false);
+    }
 }
 
 // ================================
@@ -3078,7 +3592,7 @@ function displayChangeHistory(history) {
     if (!history || history.length === 0) {
         resultsDiv.innerHTML = '<p class="text-muted">No change history found</p>';
         return;
-    }
+        }
     
     let html = '<div style="overflow-x: auto;">';
     html += '<table class="results-table" style="width: 100%; font-size: 11px;">';
@@ -3588,6 +4102,7 @@ function showTechListModal(data, columns) {
     }
     
     modal.classList.add('active');
+    setModalZIndex(modal);
     
     // Focus search input if it exists
     setTimeout(() => {
@@ -3828,6 +4343,7 @@ function showTechCalendarModal(data, columns) {
     
     // Show the modal
     modal.classList.add('active');
+    setModalZIndex(modal);
     document.body.style.overflow = 'hidden'; // Prevent background scrolling
 }
 

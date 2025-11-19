@@ -1010,6 +1010,8 @@ body {
     padding: var(--spacing-lg);
 }
 
+/* Modal z-index is now handled dynamically by JavaScript for proper stacking */
+
 .modal.active {
     display: flex;
 }
