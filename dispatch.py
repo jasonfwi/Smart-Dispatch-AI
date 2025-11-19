@@ -1,9 +1,8 @@
 """
-Smart Dispatch AI - Local Database Version
+Smart Dispatch AI - Dispatch Optimization System
 
-This is a modified version that uses SQLite instead of Databricks for faster
-local development and testing. All functionality remains the same, but queries
-run against a local SQLite database.
+This module provides dispatch optimization and technician management
+using a local SQLite database for fast, offline operations.
 """
 
 import sqlite3
@@ -26,12 +25,12 @@ from local_db import LocalDatabase, DEFAULT_DB_PATH
 logger = logging.getLogger(__name__)
 
 
-class SmartDispatchAILocal:
+class SmartDispatchAI:
     """
-    Local version of SmartDispatchAI using SQLite instead of Databricks.
+    Smart Dispatch AI - Main dispatch optimization class.
     
-    This class provides the same interface as SmartDispatchAI but uses
-    a local SQLite database for all data operations.
+    This class provides dispatch optimization and technician management
+    using a local SQLite database.
     """
     
     def __init__(self, max_range_km: float = DEFAULT_MAX_RANGE_KM,

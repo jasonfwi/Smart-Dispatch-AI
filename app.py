@@ -4,7 +4,7 @@ Modern web-based interface for AI-powered dispatch optimization
 """
 
 from flask import Flask, render_template, jsonify, request
-from dispatch_local import SmartDispatchAILocal
+from dispatch import SmartDispatchAI
 from typing import Dict, Any, Optional, Callable
 from functools import wraps, lru_cache
 import traceback
@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 
 # Global AI instance
-optimizer: Optional[SmartDispatchAILocal] = None
+optimizer: Optional[SmartDispatchAI] = None
 MAX_RANGE_KM = 15.0
 
 # Cache for frequently accessed data
@@ -32,7 +32,7 @@ def init_optimizer():
     if optimizer is None:
         logger.info("Initializing Smart Dispatch AI (Local SQLite mode)...")
         try:
-            optimizer = SmartDispatchAILocal(max_range_km=MAX_RANGE_KM)
+            optimizer = SmartDispatchAI(max_range_km=MAX_RANGE_KM)
             logger.info("✓ Local database initialized successfully")
         except Exception as e:
             logger.error(f"Failed to initialize local database: {e}")
@@ -889,7 +889,7 @@ def api_health():
         'status': 'healthy',
         'optimizer_initialized': optimizer is not None,
         'cache_size': len(_cache),
-        'database_mode': 'databricks' if USE_DATABRICKS else 'local'
+        'database_mode': 'local'
     })
 
 
@@ -1021,6 +1021,6 @@ def api_update_technician_calendar():
 
 if __name__ == '__main__':
     logger.info("🚀 Starting Smart Dispatch AI Web App...")
-    logger.info("📍 Open your browser to: http://localhost:5000")
-    app.run(debug=True, host='0.0.0.0', port=5000, threaded=True)
+    logger.info("📍 Open your browser to: http://localhost:5001")
+    app.run(debug=True, host='0.0.0.0', port=5001, threaded=True)
 

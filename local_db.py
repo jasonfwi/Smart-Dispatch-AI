@@ -1,8 +1,8 @@
 """
 Local Database Module - SQLite-based local storage for Smart Dispatch AI
 
-This module provides local database functionality using SQLite, allowing
-the system to work offline with imported Databricks data.
+This module provides local database functionality using SQLite for
+dispatch optimization and technician management.
 """
 
 import sqlite3
@@ -391,8 +391,217 @@ class LocalDatabase:
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Context manager exit."""
         self.close()
+    
+    def populate_from_csv(self, csv_dir: Optional[Path] = None, force: bool = False) -> Dict[str, int]:
+        """
+        Populate database from CSV files.
+        
+        Args:
+            csv_dir: Directory containing CSV files (default: data/csv_exports)
+            force: If True, clear existing data before importing
+            
+        Returns:
+            Dictionary with table names and row counts imported
+        """
+        if csv_dir is None:
+            csv_dir = Path(__file__).parent / "data" / "csv_exports"
+        
+        if not csv_dir.exists():
+            raise FileNotFoundError(f"CSV directory not found: {csv_dir}")
+        
+        # Map CSV files to database tables
+        csv_mapping = {
+            'current_dispatches.csv': 'current_dispatches',
+            'technicians.csv': 'technicians',
+            'technician_calendar.csv': 'technician_calendar',
+            'dispatch_history.csv': 'dispatch_history',
+        }
+        
+        results = {}
+        
+        for csv_file, table_name in csv_mapping.items():
+            csv_path = csv_dir / csv_file
+            
+            if not csv_path.exists():
+                logger.warning(f"CSV file not found: {csv_path}")
+                results[table_name] = 0
+                continue
+            
+            try:
+                # Read CSV
+                df = pd.read_csv(csv_path)
+                row_count = len(df)
+                
+                logger.info(f"Loading {row_count} rows from {csv_file} into {table_name}")
+                
+                # Clear existing data if force=True
+                if force:
+                    cursor = self.conn.cursor()
+                    cursor.execute(f"DELETE FROM {table_name}")
+                    logger.info(f"  Cleared existing data from {table_name}")
+                
+                # Insert data
+                df.to_sql(table_name, self.conn, if_exists='replace', index=False)
+                
+                # Update metadata
+                self._update_import_metadata(table_name, row_count)
+                
+                logger.info(f"  ✓ Imported {row_count} rows into {table_name}")
+                results[table_name] = row_count
+                
+            except Exception as e:
+                logger.error(f"  ✗ Failed to import {csv_file}: {e}")
+                results[table_name] = 0
+                raise
+        
+        self.conn.commit()
+        return results
+    
+    def _update_import_metadata(self, table_name: str, row_count: int):
+        """Update import metadata for a table."""
+        cursor = self.conn.cursor()
+        now = datetime.now().isoformat()
+        
+        cursor.execute("""
+            INSERT OR REPLACE INTO import_metadata 
+            (table_name, last_imported, row_count, import_timestamp)
+            VALUES (?, ?, ?, ?)
+        """, (table_name, now, row_count, now))
+    
+    def get_import_status(self) -> List[Dict[str, Any]]:
+        """Get import status for all tables."""
+        cursor = self.conn.cursor()
+        cursor.execute("""
+            SELECT table_name, last_imported, row_count, import_timestamp
+            FROM import_metadata
+            ORDER BY table_name
+        """)
+        
+        results = []
+        for row in cursor.fetchall():
+            results.append({
+                'table_name': row[0],
+                'last_imported': row[1],
+                'row_count': row[2],
+                'import_timestamp': row[3]
+            })
+        
+        return results
 
 
-# Note: Databricks import functionality has been removed.
-# The local database should be populated manually or via other data import methods.
+def main():
+    """
+    Command-line interface for database operations.
+    
+    Usage:
+        python local_db.py import [--force]  # Import CSV files to database
+        python local_db.py status            # Show import status
+    """
+    import sys
+    
+    if len(sys.argv) < 2:
+        print("Usage:")
+        print("  python local_db.py import [--force]  # Import CSV files to database")
+        print("  python local_db.py status            # Show import status")
+        return 1
+    
+    command = sys.argv[1].lower()
+    
+    if command == 'import':
+        force = '--force' in sys.argv
+        
+        print("=" * 80)
+        print("CSV to SQLite Database Import")
+        print("=" * 80)
+        print()
+        
+        db = LocalDatabase()
+        
+        try:
+            print("📥 Importing data from CSV files...")
+            if force:
+                print("   (Force mode: clearing existing data)")
+            print()
+            
+            results = db.populate_from_csv(force=force)
+            
+            print()
+            print("=" * 80)
+            print("Import Summary")
+            print("=" * 80)
+            
+            total_rows = 0
+            for table_name, row_count in results.items():
+                print(f"  {table_name}: {row_count:,} rows")
+                total_rows += row_count
+            
+            print()
+            print(f"✅ Total rows imported: {total_rows:,}")
+            print()
+            
+            # Show import status
+            print("=" * 80)
+            print("Import Status")
+            print("=" * 80)
+            
+            status = db.get_import_status()
+            for item in status:
+                print(f"  {item['table_name']}")
+                print(f"    Rows: {item['row_count']:,}")
+                print(f"    Last imported: {item['last_imported']}")
+                print()
+            
+        except Exception as e:
+            logger.error(f"Import failed: {e}")
+            import traceback
+            traceback.print_exc()
+            return 1
+        
+        finally:
+            db.close()
+        
+        print("=" * 80)
+        print("✅ Import Complete!")
+        print("=" * 80)
+        return 0
+    
+    elif command == 'status':
+        print("=" * 80)
+        print("Database Import Status")
+        print("=" * 80)
+        print()
+        
+        db = LocalDatabase()
+        
+        try:
+            status = db.get_import_status()
+            
+            if not status:
+                print("No import history found.")
+                print()
+                print("Run 'python local_db.py import' to populate the database.")
+            else:
+                for item in status:
+                    print(f"📊 {item['table_name']}")
+                    print(f"   Rows: {item['row_count']:,}")
+                    print(f"   Last imported: {item['last_imported']}")
+                    print()
+        
+        finally:
+            db.close()
+        
+        print("=" * 80)
+        return 0
+    
+    else:
+        print(f"Unknown command: {command}")
+        print()
+        print("Available commands:")
+        print("  import [--force]  # Import CSV files to database")
+        print("  status            # Show import status")
+        return 1
 
+
+if __name__ == '__main__':
+    import sys
+    sys.exit(main())
