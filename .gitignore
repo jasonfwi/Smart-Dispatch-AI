@@ -39,6 +39,8 @@ Thumbs.db
 
 # Database (ignore the actual database file, but commit the schema)
 dispatch.db
+*.db-shm
+*.db-wal
 *.db-journal
 
 # Logs
