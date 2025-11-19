@@ -840,7 +840,7 @@ def api_city_capacity():
         raise ValueError('date is required')
     
     logger.info(f"Capacity check: city={city}, state={state} on {date}")
-    capacity = opt.get_city_capacity(city=city, state=state, date=date)
+    capacity = opt.get_city_capacity(city=city, state=state, target_date=date)
     
     # Check if it's overview mode (returns list) or single result (returns dict)
     if isinstance(capacity, list):

@@ -429,7 +429,7 @@ class SmartDispatchAI:
                 FROM technicians t
                 JOIN technician_calendar c ON t.Technician_id = c.Technician_id
                 LEFT JOIN current_dispatches d ON d.Assigned_technician_id = t.Technician_id
-                    AND d.Appointment_start_time LIKE c.Date || '%'
+                    AND d.Appointment_start_datetime LIKE c.Date || '%'
                 WHERE c.Date = ? AND c.Available = 1
                 GROUP BY t.City, t.State
             """
@@ -461,7 +461,7 @@ class SmartDispatchAI:
             FROM technicians t
             JOIN technician_calendar c ON t.Technician_id = c.Technician_id
             LEFT JOIN current_dispatches d ON d.Assigned_technician_id = t.Technician_id
-                AND d.Appointment_start_time LIKE c.Date || '%'
+                AND d.Appointment_start_datetime LIKE c.Date || '%'
             WHERE c.Date = ? AND c.Available = 1
         """
         params = [target_date] if target_date else []

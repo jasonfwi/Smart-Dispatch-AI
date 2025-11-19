@@ -3557,7 +3557,7 @@ function showTechCalendarModal(data, columns) {
     }
     
     // Filter out columns that should not appear in table (shown in form instead)
-    const excludedColumns = ['_rescued_data', 'Technician_id', 'Name', 'City', 'State'];
+    const excludedColumns = ['Technician_id', 'Name', 'City', 'State'];
     const filteredColumns = columns.filter(col => !excludedColumns.includes(col));
     
     // Define column order: Date first, then others

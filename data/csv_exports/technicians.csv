@@ -1,151 +1,151 @@
-Technician_id,Name,Primary_skill,City,County,State,Latitude,Longitude,Workload_capacity,Current_assignments,_rescued_data
-T900000,Michael Martinez,Fiber ONT installation,New York,NEW YORK,NY,40.691069,-74.178013,4,1,
-T900001,Joseph Jones,Connectivity diagnosis,New York,NEW YORK,NY,40.842748,-74.173963,8,4,
-T900002,Barbara Williams,Service restoration,New York,NEW YORK,NY,40.749674,-73.757486,5,5,
-T900003,Joseph Jones,Equipment upgrade,New York,NEW YORK,NY,40.551099,-74.121206,8,6,
-T900004,Richard Smith,Equipment upgrade,New York,NEW YORK,NY,40.86306,-73.912605,7,-3,
-T900005,David Gonzalez,Copper ONT installation,New York,NEW YORK,NY,40.503568,-73.86671,4,0,
-T900006,John Johnson,Cable maintenance,New York,NEW YORK,NY,40.931042,-73.911153,8,7,
-T900007,David Jones,Service restoration,New York,NEW YORK,NY,40.624476,-74.05378,7,7,
-T900008,Susan Smith,Line repair,New York,NEW YORK,NY,40.951479,-74.242224,6,2,
-T900009,Elizabeth Brown,Line repair,New York,NEW YORK,NY,40.707792,-74.053664,5,-2,
-T900010,Elizabeth Brown,Copper ONT installation,New York,NEW YORK,NY,40.801729,-73.816233,8,0,
-T900011,Barbara Lopez,Fiber ONT installation,New York,NEW YORK,NY,40.498645,-73.852415,8,0,
-T900012,Jessica Davis,Network troubleshooting,New York,NEW YORK,NY,40.690793,-74.219053,7,1,
-T900013,Linda Rodriguez,Connectivity diagnosis,New York,NEW YORK,NY,40.652683,-73.892886,5,2,
-T900014,James Brown,Network troubleshooting,New York,NEW YORK,NY,40.50271,-73.807798,8,-3,
-T900015,Robert Brown,Copper ONT installation,Los Angeles,LOS ANGELES,CA,33.833137,-118.178101,6,-2,
-T900016,James Brown,Network troubleshooting,Los Angeles,LOS ANGELES,CA,34.108039,-118.404721,5,3,
-T900017,Patricia Martinez,Fiber ONT installation,Los Angeles,LOS ANGELES,CA,34.300987,-118.316329,4,2,
-T900018,John Davis,Equipment upgrade,Los Angeles,LOS ANGELES,CA,33.858558,-118.389418,5,3,
-T900019,David Johnson,Equipment upgrade,Los Angeles,LOS ANGELES,CA,34.190921,-118.094149,8,1,
-T900020,David Rodriguez,Line repair,Los Angeles,LOS ANGELES,CA,33.99326,-118.482206,4,-5,
-T900021,Michael Smith,Line repair,Los Angeles,LOS ANGELES,CA,34.023807,-118.443922,5,3,
-T900022,Michael Davis,Connectivity diagnosis,Los Angeles,LOS ANGELES,CA,33.805793,-118.380218,6,2,
-T900023,Michael Davis,Network troubleshooting,Los Angeles,LOS ANGELES,CA,34.128054,-118.402332,8,4,
-T900024,Linda Wilson,Copper ONT installation,Los Angeles,LOS ANGELES,CA,34.224298,-118.238422,8,0,
-T900025,Patricia Rodriguez,Connectivity diagnosis,Los Angeles,LOS ANGELES,CA,33.957343,-118.011227,8,7,
-T900026,David Jones,Service restoration,Los Angeles,LOS ANGELES,CA,33.90412,-118.253673,7,-1,
-T900027,Elizabeth Martinez,Service restoration,Los Angeles,LOS ANGELES,CA,34.276138,-118.084163,6,1,
-T900028,David Jones,Equipment upgrade,Los Angeles,LOS ANGELES,CA,33.977123,-118.4836,6,3,
-T900029,Michael Hernandez,Fiber ONT installation,Los Angeles,LOS ANGELES,CA,34.294132,-118.273169,4,-3,
-T900030,Jessica Garcia,Fiber ONT installation,Chicago,CHICAGO,IL,41.794716,-87.784652,4,-1,
-T900031,Patricia Smith,Network troubleshooting,Chicago,CHICAGO,IL,41.80425,-87.649552,8,4,
-T900032,Mary Gonzalez,Line repair,Chicago,CHICAGO,IL,42.083984,-87.795336,4,0,
-T900033,William Rodriguez,Equipment check,Chicago,CHICAGO,IL,41.649702,-87.521188,6,-2,
-T900034,Richard Johnson,Network troubleshooting,Chicago,CHICAGO,IL,41.822174,-87.690785,6,0,
-T900035,David Smith,Service restoration,Chicago,CHICAGO,IL,42.017601,-87.443838,4,2,
-T900036,John Martinez,Line repair,Chicago,CHICAGO,IL,41.775636,-87.692631,5,-2,
-T900037,Jessica Williams,Connectivity diagnosis,Chicago,CHICAGO,IL,41.687555,-87.681018,8,-4,
-T900038,Linda Martinez,Connectivity diagnosis,Chicago,CHICAGO,IL,41.994822,-87.87963,8,4,
-T900039,Joseph Williams,Service restoration,Chicago,CHICAGO,IL,41.775094,-87.47291,8,5,
-T900040,David Anderson,Fiber ONT installation,Chicago,CHICAGO,IL,41.80186,-87.840069,8,4,
-T900041,Elizabeth Hernandez,Copper ONT installation,Chicago,CHICAGO,IL,41.726142,-87.794267,4,-1,
-T900042,Linda Gonzalez,Equipment check,Chicago,CHICAGO,IL,42.145654,-87.374232,8,-1,
-T900043,Barbara Lopez,Copper ONT installation,Chicago,CHICAGO,IL,42.002602,-87.751037,6,3,
-T900044,William Hernandez,Service migration,Chicago,CHICAGO,IL,41.719581,-87.435508,6,4,
-T900045,Elizabeth Brown,Service restoration,Houston,HOUSTON,TX,29.929541,-95.38439,7,-1,
-T900046,Elizabeth Rodriguez,Fiber ONT installation,Houston,HOUSTON,TX,29.667393,-95.242425,5,3,
-T900047,Michael Rodriguez,Network troubleshooting,Houston,HOUSTON,TX,29.96445,-95.325125,5,0,
-T900048,John Davis,Cable maintenance,Houston,HOUSTON,TX,29.917999,-95.376445,5,1,
-T900049,William Williams,Copper ONT installation,Houston,HOUSTON,TX,29.529257,-95.284091,7,1,
-T900050,Joseph Johnson,Line repair,Houston,HOUSTON,TX,29.732438,-95.396531,7,3,
-T900051,Patricia Lopez,Line repair,Houston,HOUSTON,TX,29.581623,-95.292023,4,0,
-T900052,Susan Garcia,Connectivity diagnosis,Houston,HOUSTON,TX,29.813134,-95.633098,4,1,
-T900053,David Lopez,Service migration,Houston,HOUSTON,TX,29.557936,-95.102132,7,4,
-T900054,John Jones,Service migration,Houston,HOUSTON,TX,29.797485,-95.615947,8,3,
-T900055,Mary Rodriguez,Fiber ONT installation,Houston,HOUSTON,TX,29.702843,-95.177239,5,-4,
-T900056,Michael Rodriguez,Network troubleshooting,Houston,HOUSTON,TX,29.639774,-95.274327,6,2,
-T900057,Jessica Garcia,Service restoration,Houston,HOUSTON,TX,30.013802,-95.295889,4,2,
-T900058,Susan Gonzalez,Copper ONT installation,Houston,HOUSTON,TX,29.936465,-95.491611,4,0,
-T900059,Richard Gonzalez,Connectivity diagnosis,Houston,HOUSTON,TX,29.897419,-95.389274,4,4,
-T900060,Michael Williams,Network support,Phoenix,PHOENIX,AZ,33.491891,-112.250787,8,1,
-T900061,Jennifer Martinez,Fiber ONT installation,Phoenix,PHOENIX,AZ,33.412151,-112.115761,5,1,
-T900062,Linda Gonzalez,Line repair,Phoenix,PHOENIX,AZ,33.31987,-112.108902,7,5,
-T900063,Elizabeth Williams,Service restoration,Phoenix,PHOENIX,AZ,33.587149,-111.989622,7,6,
-T900064,Patricia Brown,Service restoration,Phoenix,PHOENIX,AZ,33.45172,-112.320812,8,-2,
-T900065,Jennifer Johnson,Equipment check,Phoenix,PHOENIX,AZ,33.196585,-111.829219,6,-1,
-T900066,Linda Jones,Fiber ONT installation,Phoenix,PHOENIX,AZ,33.448772,-111.838236,4,0,
-T900067,Patricia Garcia,Service migration,Phoenix,PHOENIX,AZ,33.636456,-111.808934,4,-2,
-T900068,James Jones,Line repair,Phoenix,PHOENIX,AZ,33.26361,-111.917057,4,-1,
-T900069,Jennifer Miller,Copper ONT installation,Phoenix,PHOENIX,AZ,33.717445,-112.147414,6,4,
-T900070,Elizabeth Miller,Copper ONT installation,Phoenix,PHOENIX,AZ,33.5516,-112.044636,7,2,
-T900071,Linda Miller,Connectivity diagnosis,Phoenix,PHOENIX,AZ,33.310022,-111.896243,4,0,
-T900072,Jessica Lopez,Network troubleshooting,Phoenix,PHOENIX,AZ,33.486066,-111.982977,7,3,
-T900073,Patricia Jones,Connectivity diagnosis,Phoenix,PHOENIX,AZ,33.606583,-111.925313,4,3,
-T900074,Robert Garcia,Network troubleshooting,Phoenix,PHOENIX,AZ,33.348833,-111.833779,4,-3,
-T900075,Jessica Davis,Service restoration,Philadelphia,PHILADELPHIA,PA,39.880181,-75.268839,4,2,
-T900076,Barbara Rodriguez,Line repair,Philadelphia,PHILADELPHIA,PA,39.725222,-75.013268,7,-4,
-T900077,Patricia Wilson,Line repair,Philadelphia,PHILADELPHIA,PA,39.735254,-74.901439,8,-1,
-T900078,Michael Williams,Fiber ONT installation,Philadelphia,PHILADELPHIA,PA,39.694251,-74.929965,4,-1,
-T900079,Linda Gonzalez,Copper ONT installation,Philadelphia,PHILADELPHIA,PA,40.083411,-75.412792,6,-3,
-T900080,William Davis,Fiber ONT installation,Philadelphia,PHILADELPHIA,PA,39.874779,-74.936371,7,0,
-T900081,Joseph Hernandez,Connectivity diagnosis,Philadelphia,PHILADELPHIA,PA,39.93834,-75.148893,6,4,
-T900082,Robert Hernandez,Network troubleshooting,Philadelphia,PHILADELPHIA,PA,39.8353,-75.391832,8,2,
-T900083,Richard Rodriguez,Connectivity diagnosis,Philadelphia,PHILADELPHIA,PA,39.792152,-74.990216,6,2,
-T900084,John Martinez,Service restoration,Philadelphia,PHILADELPHIA,PA,39.701188,-75.225642,7,6,
-T900085,Mary Miller,Cable maintenance,Philadelphia,PHILADELPHIA,PA,39.712239,-75.002127,6,1,
-T900086,Linda Garcia,Equipment upgrade,Philadelphia,PHILADELPHIA,PA,39.76783,-75.295692,7,-1,
-T900087,Barbara Garcia,Copper ONT installation,Philadelphia,PHILADELPHIA,PA,40.094422,-75.100452,6,0,
-T900088,Joseph Rodriguez,Equipment check,Philadelphia,PHILADELPHIA,PA,39.724293,-75.142936,8,7,
-T900089,Joseph Davis,Network troubleshooting,Philadelphia,PHILADELPHIA,PA,40.132716,-75.316505,7,3,
-T900090,Richard Brown,Connectivity diagnosis,San Antonio,SAN ANTONIO,TX,29.158051,-98.598394,7,2,
-T900091,Jessica Davis,Copper ONT installation,San Antonio,SAN ANTONIO,TX,29.368528,-98.360213,6,0,
-T900092,Robert Wilson,Line repair,San Antonio,SAN ANTONIO,TX,29.501554,-98.559702,6,3,
-T900093,Richard Anderson,Copper ONT installation,San Antonio,SAN ANTONIO,TX,29.478501,-98.405206,6,3,
-T900094,James Rodriguez,Fiber ONT installation,San Antonio,SAN ANTONIO,TX,29.561066,-98.429736,6,1,
-T900095,Patricia Rodriguez,Bandwidth upgrade,San Antonio,SAN ANTONIO,TX,29.674686,-98.463973,7,2,
-T900096,Elizabeth Garcia,Network troubleshooting,San Antonio,SAN ANTONIO,TX,29.161276,-98.517003,8,3,
-T900097,Linda Brown,Network troubleshooting,San Antonio,SAN ANTONIO,TX,29.288634,-98.535731,5,3,
-T900098,William Miller,Service restoration,San Antonio,SAN ANTONIO,TX,29.162718,-98.669314,5,0,
-T900099,Richard Smith,Connectivity diagnosis,San Antonio,SAN ANTONIO,TX,29.484475,-98.356443,7,5,
-T900100,Susan Garcia,Fiber ONT installation,San Antonio,SAN ANTONIO,TX,29.580554,-98.249,5,0,
-T900101,David Gonzalez,Network support,San Antonio,SAN ANTONIO,TX,29.298459,-98.226598,5,1,
-T900102,John Hernandez,Service restoration,San Antonio,SAN ANTONIO,TX,29.284213,-98.752271,7,7,
-T900103,Elizabeth Gonzalez,Line repair,San Antonio,SAN ANTONIO,TX,29.489415,-98.335243,7,-3,
-T900104,Richard Williams,Cable maintenance,San Antonio,SAN ANTONIO,TX,29.591308,-98.311088,4,1,
-T900105,David Miller,Connectivity diagnosis,San Diego,SAN DIEGO,CA,32.933291,-117.175264,4,1,
-T900106,Barbara Rodriguez,Fiber ONT installation,San Diego,SAN DIEGO,CA,32.836089,-117.044996,6,3,
-T900107,Linda Rodriguez,Network troubleshooting,San Diego,SAN DIEGO,CA,32.860756,-117.39789,8,6,
-T900108,Barbara Hernandez,Line repair,San Diego,SAN DIEGO,CA,32.760701,-117.068302,8,4,
-T900109,Joseph Martinez,Connectivity diagnosis,San Diego,SAN DIEGO,CA,32.512851,-117.277767,8,3,
-T900110,Jessica Rodriguez,Line repair,San Diego,SAN DIEGO,CA,32.702181,-116.958737,7,0,
-T900111,Jessica Anderson,Cable maintenance,San Diego,SAN DIEGO,CA,32.650506,-117.153773,6,3,
-T900112,Robert Brown,Service migration,San Diego,SAN DIEGO,CA,32.599312,-117.184212,4,-1,
-T900113,Linda Garcia,Copper ONT installation,San Diego,SAN DIEGO,CA,32.61752,-116.944282,5,-2,
-T900114,Michael Davis,Fiber ONT installation,San Diego,SAN DIEGO,CA,32.938218,-116.941253,6,1,
-T900115,David Miller,Service restoration,San Diego,SAN DIEGO,CA,32.882046,-117.138561,4,1,
-T900116,Linda Williams,Network troubleshooting,San Diego,SAN DIEGO,CA,32.586996,-117.398215,4,-4,
-T900117,Jessica Jones,Copper ONT installation,San Diego,SAN DIEGO,CA,32.467321,-117.210217,7,0,
-T900118,Richard Martinez,Equipment check,San Diego,SAN DIEGO,CA,32.755217,-117.183509,7,1,
-T900119,Richard Rodriguez,Service restoration,San Diego,SAN DIEGO,CA,32.680691,-117.38012,8,5,
-T900120,James Rodriguez,Copper ONT installation,Dallas,DALLAS,TX,32.531204,-96.551082,4,2,
-T900121,Elizabeth Rodriguez,Network troubleshooting,Dallas,DALLAS,TX,32.752091,-96.931037,4,3,
-T900122,Robert Anderson,Service restoration,Dallas,DALLAS,TX,33.021664,-96.704029,6,-1,
-T900123,James Jones,Equipment check,Dallas,DALLAS,TX,32.901759,-96.792829,6,6,
-T900124,John Hernandez,Connectivity diagnosis,Dallas,DALLAS,TX,32.685726,-96.975261,5,4,
-T900125,David Wilson,Equipment upgrade,Dallas,DALLAS,TX,32.564363,-96.960058,7,3,
-T900126,Linda Rodriguez,Fiber ONT installation,Dallas,DALLAS,TX,32.823718,-96.975827,5,3,
-T900127,Joseph Rodriguez,Line repair,Dallas,DALLAS,TX,32.704995,-97.011352,5,-3,
-T900128,Barbara Lopez,Connectivity diagnosis,Dallas,DALLAS,TX,33.010546,-96.708578,5,3,
-T900129,Richard Wilson,Fiber ONT installation,Dallas,DALLAS,TX,32.782682,-96.544221,7,5,
-T900130,John Miller,Service migration,Dallas,DALLAS,TX,33.038661,-96.995588,8,4,
-T900131,Mary Williams,Service restoration,Dallas,DALLAS,TX,32.607493,-96.755314,6,6,
-T900132,Jessica Miller,Copper ONT installation,Dallas,DALLAS,TX,32.837434,-96.593307,7,1,
-T900133,Elizabeth Smith,Network troubleshooting,Dallas,DALLAS,TX,32.640397,-96.53126,7,1,
-T900134,David Wilson,Line repair,Dallas,DALLAS,TX,32.852153,-96.546252,6,0,
-T900135,David Lopez,Network troubleshooting,Austin,AUSTIN,TX,30.051205,-97.935236,6,0,
-T900136,Jennifer Wilson,Service restoration,Austin,AUSTIN,TX,30.281242,-97.972298,6,-1,
-T900137,Patricia Garcia,Connectivity diagnosis,Austin,AUSTIN,TX,30.380197,-97.742271,7,1,
-T900138,Joseph Garcia,Copper ONT installation,Austin,AUSTIN,TX,30.081575,-97.718629,6,1,
-T900139,Elizabeth Miller,Connectivity diagnosis,Austin,AUSTIN,TX,30.170216,-97.765032,5,1,
-T900140,Michael Brown,Fiber ONT installation,Austin,AUSTIN,TX,30.056616,-97.514672,6,0,
-T900141,Jessica Davis,Network troubleshooting,Austin,AUSTIN,TX,30.009026,-97.572315,4,0,
-T900142,Elizabeth Wilson,Line repair,Austin,AUSTIN,TX,30.373714,-97.484479,5,3,
-T900143,William Smith,Equipment check,Austin,AUSTIN,TX,30.387052,-97.504497,7,2,
-T900144,Patricia Martinez,Line repair,Austin,AUSTIN,TX,30.145427,-97.840123,8,-2,
-T900145,John Smith,Service migration,Austin,AUSTIN,TX,30.042875,-97.828433,6,5,
-T900146,John Davis,Copper ONT installation,Austin,AUSTIN,TX,30.227359,-97.488097,7,2,
-T900147,David Lopez,Service restoration,Austin,AUSTIN,TX,30.354408,-97.918358,7,3,
-T900148,William Jones,Fiber ONT installation,Austin,AUSTIN,TX,30.273837,-97.792547,5,1,
-T900149,Barbara Johnson,Network support,Austin,AUSTIN,TX,30.475103,-98.001611,5,1,
+Technician_id,Name,Primary_skill,City,County,State,Latitude,Longitude,Workload_capacity,Current_assignments
+T900000,Michael Martinez,Fiber ONT installation,New York,NEW YORK,NY,40.691069,-74.178013,4,1
+T900001,Joseph Jones,Connectivity diagnosis,New York,NEW YORK,NY,40.842748,-74.173963,8,4
+T900002,Barbara Williams,Service restoration,New York,NEW YORK,NY,40.749674,-73.757486,5,5
+T900003,Joseph Jones,Equipment upgrade,New York,NEW YORK,NY,40.551099,-74.121206,8,6
+T900004,Richard Smith,Equipment upgrade,New York,NEW YORK,NY,40.86306,-73.912605,7,-3
+T900005,David Gonzalez,Copper ONT installation,New York,NEW YORK,NY,40.503568,-73.86671,4,0
+T900006,John Johnson,Cable maintenance,New York,NEW YORK,NY,40.931042,-73.911153,8,7
+T900007,David Jones,Service restoration,New York,NEW YORK,NY,40.624476,-74.05378,7,7
+T900008,Susan Smith,Line repair,New York,NEW YORK,NY,40.951479,-74.242224,6,2
+T900009,Elizabeth Brown,Line repair,New York,NEW YORK,NY,40.707792,-74.053664,5,-2
+T900010,Elizabeth Brown,Copper ONT installation,New York,NEW YORK,NY,40.801729,-73.816233,8,0
+T900011,Barbara Lopez,Fiber ONT installation,New York,NEW YORK,NY,40.498645,-73.852415,8,0
+T900012,Jessica Davis,Network troubleshooting,New York,NEW YORK,NY,40.690793,-74.219053,7,1
+T900013,Linda Rodriguez,Connectivity diagnosis,New York,NEW YORK,NY,40.652683,-73.892886,5,2
+T900014,James Brown,Network troubleshooting,New York,NEW YORK,NY,40.50271,-73.807798,8,-3
+T900015,Robert Brown,Copper ONT installation,Los Angeles,LOS ANGELES,CA,33.833137,-118.178101,6,-2
+T900016,James Brown,Network troubleshooting,Los Angeles,LOS ANGELES,CA,34.108039,-118.404721,5,3
+T900017,Patricia Martinez,Fiber ONT installation,Los Angeles,LOS ANGELES,CA,34.300987,-118.316329,4,2
+T900018,John Davis,Equipment upgrade,Los Angeles,LOS ANGELES,CA,33.858558,-118.389418,5,3
+T900019,David Johnson,Equipment upgrade,Los Angeles,LOS ANGELES,CA,34.190921,-118.094149,8,1
+T900020,David Rodriguez,Line repair,Los Angeles,LOS ANGELES,CA,33.99326,-118.482206,4,-5
+T900021,Michael Smith,Line repair,Los Angeles,LOS ANGELES,CA,34.023807,-118.443922,5,3
+T900022,Michael Davis,Connectivity diagnosis,Los Angeles,LOS ANGELES,CA,33.805793,-118.380218,6,2
+T900023,Michael Davis,Network troubleshooting,Los Angeles,LOS ANGELES,CA,34.128054,-118.402332,8,4
+T900024,Linda Wilson,Copper ONT installation,Los Angeles,LOS ANGELES,CA,34.224298,-118.238422,8,0
+T900025,Patricia Rodriguez,Connectivity diagnosis,Los Angeles,LOS ANGELES,CA,33.957343,-118.011227,8,7
+T900026,David Jones,Service restoration,Los Angeles,LOS ANGELES,CA,33.90412,-118.253673,7,-1
+T900027,Elizabeth Martinez,Service restoration,Los Angeles,LOS ANGELES,CA,34.276138,-118.084163,6,1
+T900028,David Jones,Equipment upgrade,Los Angeles,LOS ANGELES,CA,33.977123,-118.4836,6,3
+T900029,Michael Hernandez,Fiber ONT installation,Los Angeles,LOS ANGELES,CA,34.294132,-118.273169,4,-3
+T900030,Jessica Garcia,Fiber ONT installation,Chicago,CHICAGO,IL,41.794716,-87.784652,4,-1
+T900031,Patricia Smith,Network troubleshooting,Chicago,CHICAGO,IL,41.80425,-87.649552,8,4
+T900032,Mary Gonzalez,Line repair,Chicago,CHICAGO,IL,42.083984,-87.795336,4,0
+T900033,William Rodriguez,Equipment check,Chicago,CHICAGO,IL,41.649702,-87.521188,6,-2
+T900034,Richard Johnson,Network troubleshooting,Chicago,CHICAGO,IL,41.822174,-87.690785,6,0
+T900035,David Smith,Service restoration,Chicago,CHICAGO,IL,42.017601,-87.443838,4,2
+T900036,John Martinez,Line repair,Chicago,CHICAGO,IL,41.775636,-87.692631,5,-2
+T900037,Jessica Williams,Connectivity diagnosis,Chicago,CHICAGO,IL,41.687555,-87.681018,8,-4
+T900038,Linda Martinez,Connectivity diagnosis,Chicago,CHICAGO,IL,41.994822,-87.87963,8,4
+T900039,Joseph Williams,Service restoration,Chicago,CHICAGO,IL,41.775094,-87.47291,8,5
+T900040,David Anderson,Fiber ONT installation,Chicago,CHICAGO,IL,41.80186,-87.840069,8,4
+T900041,Elizabeth Hernandez,Copper ONT installation,Chicago,CHICAGO,IL,41.726142,-87.794267,4,-1
+T900042,Linda Gonzalez,Equipment check,Chicago,CHICAGO,IL,42.145654,-87.374232,8,-1
+T900043,Barbara Lopez,Copper ONT installation,Chicago,CHICAGO,IL,42.002602,-87.751037,6,3
+T900044,William Hernandez,Service migration,Chicago,CHICAGO,IL,41.719581,-87.435508,6,4
+T900045,Elizabeth Brown,Service restoration,Houston,HOUSTON,TX,29.929541,-95.38439,7,-1
+T900046,Elizabeth Rodriguez,Fiber ONT installation,Houston,HOUSTON,TX,29.667393,-95.242425,5,3
+T900047,Michael Rodriguez,Network troubleshooting,Houston,HOUSTON,TX,29.96445,-95.325125,5,0
+T900048,John Davis,Cable maintenance,Houston,HOUSTON,TX,29.917999,-95.376445,5,1
+T900049,William Williams,Copper ONT installation,Houston,HOUSTON,TX,29.529257,-95.284091,7,1
+T900050,Joseph Johnson,Line repair,Houston,HOUSTON,TX,29.732438,-95.396531,7,3
+T900051,Patricia Lopez,Line repair,Houston,HOUSTON,TX,29.581623,-95.292023,4,0
+T900052,Susan Garcia,Connectivity diagnosis,Houston,HOUSTON,TX,29.813134,-95.633098,4,1
+T900053,David Lopez,Service migration,Houston,HOUSTON,TX,29.557936,-95.102132,7,4
+T900054,John Jones,Service migration,Houston,HOUSTON,TX,29.797485,-95.615947,8,3
+T900055,Mary Rodriguez,Fiber ONT installation,Houston,HOUSTON,TX,29.702843,-95.177239,5,-4
+T900056,Michael Rodriguez,Network troubleshooting,Houston,HOUSTON,TX,29.639774,-95.274327,6,2
+T900057,Jessica Garcia,Service restoration,Houston,HOUSTON,TX,30.013802,-95.295889,4,2
+T900058,Susan Gonzalez,Copper ONT installation,Houston,HOUSTON,TX,29.936465,-95.491611,4,0
+T900059,Richard Gonzalez,Connectivity diagnosis,Houston,HOUSTON,TX,29.897419,-95.389274,4,4
+T900060,Michael Williams,Network support,Phoenix,PHOENIX,AZ,33.491891,-112.250787,8,1
+T900061,Jennifer Martinez,Fiber ONT installation,Phoenix,PHOENIX,AZ,33.412151,-112.115761,5,1
+T900062,Linda Gonzalez,Line repair,Phoenix,PHOENIX,AZ,33.31987,-112.108902,7,5
+T900063,Elizabeth Williams,Service restoration,Phoenix,PHOENIX,AZ,33.587149,-111.989622,7,6
+T900064,Patricia Brown,Service restoration,Phoenix,PHOENIX,AZ,33.45172,-112.320812,8,-2
+T900065,Jennifer Johnson,Equipment check,Phoenix,PHOENIX,AZ,33.196585,-111.829219,6,-1
+T900066,Linda Jones,Fiber ONT installation,Phoenix,PHOENIX,AZ,33.448772,-111.838236,4,0
+T900067,Patricia Garcia,Service migration,Phoenix,PHOENIX,AZ,33.636456,-111.808934,4,-2
+T900068,James Jones,Line repair,Phoenix,PHOENIX,AZ,33.26361,-111.917057,4,-1
+T900069,Jennifer Miller,Copper ONT installation,Phoenix,PHOENIX,AZ,33.717445,-112.147414,6,4
+T900070,Elizabeth Miller,Copper ONT installation,Phoenix,PHOENIX,AZ,33.5516,-112.044636,7,2
+T900071,Linda Miller,Connectivity diagnosis,Phoenix,PHOENIX,AZ,33.310022,-111.896243,4,0
+T900072,Jessica Lopez,Network troubleshooting,Phoenix,PHOENIX,AZ,33.486066,-111.982977,7,3
+T900073,Patricia Jones,Connectivity diagnosis,Phoenix,PHOENIX,AZ,33.606583,-111.925313,4,3
+T900074,Robert Garcia,Network troubleshooting,Phoenix,PHOENIX,AZ,33.348833,-111.833779,4,-3
+T900075,Jessica Davis,Service restoration,Philadelphia,PHILADELPHIA,PA,39.880181,-75.268839,4,2
+T900076,Barbara Rodriguez,Line repair,Philadelphia,PHILADELPHIA,PA,39.725222,-75.013268,7,-4
+T900077,Patricia Wilson,Line repair,Philadelphia,PHILADELPHIA,PA,39.735254,-74.901439,8,-1
+T900078,Michael Williams,Fiber ONT installation,Philadelphia,PHILADELPHIA,PA,39.694251,-74.929965,4,-1
+T900079,Linda Gonzalez,Copper ONT installation,Philadelphia,PHILADELPHIA,PA,40.083411,-75.412792,6,-3
+T900080,William Davis,Fiber ONT installation,Philadelphia,PHILADELPHIA,PA,39.874779,-74.936371,7,0
+T900081,Joseph Hernandez,Connectivity diagnosis,Philadelphia,PHILADELPHIA,PA,39.93834,-75.148893,6,4
+T900082,Robert Hernandez,Network troubleshooting,Philadelphia,PHILADELPHIA,PA,39.8353,-75.391832,8,2
+T900083,Richard Rodriguez,Connectivity diagnosis,Philadelphia,PHILADELPHIA,PA,39.792152,-74.990216,6,2
+T900084,John Martinez,Service restoration,Philadelphia,PHILADELPHIA,PA,39.701188,-75.225642,7,6
+T900085,Mary Miller,Cable maintenance,Philadelphia,PHILADELPHIA,PA,39.712239,-75.002127,6,1
+T900086,Linda Garcia,Equipment upgrade,Philadelphia,PHILADELPHIA,PA,39.76783,-75.295692,7,-1
+T900087,Barbara Garcia,Copper ONT installation,Philadelphia,PHILADELPHIA,PA,40.094422,-75.100452,6,0
+T900088,Joseph Rodriguez,Equipment check,Philadelphia,PHILADELPHIA,PA,39.724293,-75.142936,8,7
+T900089,Joseph Davis,Network troubleshooting,Philadelphia,PHILADELPHIA,PA,40.132716,-75.316505,7,3
+T900090,Richard Brown,Connectivity diagnosis,San Antonio,SAN ANTONIO,TX,29.158051,-98.598394,7,2
+T900091,Jessica Davis,Copper ONT installation,San Antonio,SAN ANTONIO,TX,29.368528,-98.360213,6,0
+T900092,Robert Wilson,Line repair,San Antonio,SAN ANTONIO,TX,29.501554,-98.559702,6,3
+T900093,Richard Anderson,Copper ONT installation,San Antonio,SAN ANTONIO,TX,29.478501,-98.405206,6,3
+T900094,James Rodriguez,Fiber ONT installation,San Antonio,SAN ANTONIO,TX,29.561066,-98.429736,6,1
+T900095,Patricia Rodriguez,Bandwidth upgrade,San Antonio,SAN ANTONIO,TX,29.674686,-98.463973,7,2
+T900096,Elizabeth Garcia,Network troubleshooting,San Antonio,SAN ANTONIO,TX,29.161276,-98.517003,8,3
+T900097,Linda Brown,Network troubleshooting,San Antonio,SAN ANTONIO,TX,29.288634,-98.535731,5,3
+T900098,William Miller,Service restoration,San Antonio,SAN ANTONIO,TX,29.162718,-98.669314,5,0
+T900099,Richard Smith,Connectivity diagnosis,San Antonio,SAN ANTONIO,TX,29.484475,-98.356443,7,5
+T900100,Susan Garcia,Fiber ONT installation,San Antonio,SAN ANTONIO,TX,29.580554,-98.249,5,0
+T900101,David Gonzalez,Network support,San Antonio,SAN ANTONIO,TX,29.298459,-98.226598,5,1
+T900102,John Hernandez,Service restoration,San Antonio,SAN ANTONIO,TX,29.284213,-98.752271,7,7
+T900103,Elizabeth Gonzalez,Line repair,San Antonio,SAN ANTONIO,TX,29.489415,-98.335243,7,-3
+T900104,Richard Williams,Cable maintenance,San Antonio,SAN ANTONIO,TX,29.591308,-98.311088,4,1
+T900105,David Miller,Connectivity diagnosis,San Diego,SAN DIEGO,CA,32.933291,-117.175264,4,1
+T900106,Barbara Rodriguez,Fiber ONT installation,San Diego,SAN DIEGO,CA,32.836089,-117.044996,6,3
+T900107,Linda Rodriguez,Network troubleshooting,San Diego,SAN DIEGO,CA,32.860756,-117.39789,8,6
+T900108,Barbara Hernandez,Line repair,San Diego,SAN DIEGO,CA,32.760701,-117.068302,8,4
+T900109,Joseph Martinez,Connectivity diagnosis,San Diego,SAN DIEGO,CA,32.512851,-117.277767,8,3
+T900110,Jessica Rodriguez,Line repair,San Diego,SAN DIEGO,CA,32.702181,-116.958737,7,0
+T900111,Jessica Anderson,Cable maintenance,San Diego,SAN DIEGO,CA,32.650506,-117.153773,6,3
+T900112,Robert Brown,Service migration,San Diego,SAN DIEGO,CA,32.599312,-117.184212,4,-1
+T900113,Linda Garcia,Copper ONT installation,San Diego,SAN DIEGO,CA,32.61752,-116.944282,5,-2
+T900114,Michael Davis,Fiber ONT installation,San Diego,SAN DIEGO,CA,32.938218,-116.941253,6,1
+T900115,David Miller,Service restoration,San Diego,SAN DIEGO,CA,32.882046,-117.138561,4,1
+T900116,Linda Williams,Network troubleshooting,San Diego,SAN DIEGO,CA,32.586996,-117.398215,4,-4
+T900117,Jessica Jones,Copper ONT installation,San Diego,SAN DIEGO,CA,32.467321,-117.210217,7,0
+T900118,Richard Martinez,Equipment check,San Diego,SAN DIEGO,CA,32.755217,-117.183509,7,1
+T900119,Richard Rodriguez,Service restoration,San Diego,SAN DIEGO,CA,32.680691,-117.38012,8,5
+T900120,James Rodriguez,Copper ONT installation,Dallas,DALLAS,TX,32.531204,-96.551082,4,2
+T900121,Elizabeth Rodriguez,Network troubleshooting,Dallas,DALLAS,TX,32.752091,-96.931037,4,3
+T900122,Robert Anderson,Service restoration,Dallas,DALLAS,TX,33.021664,-96.704029,6,-1
+T900123,James Jones,Equipment check,Dallas,DALLAS,TX,32.901759,-96.792829,6,6
+T900124,John Hernandez,Connectivity diagnosis,Dallas,DALLAS,TX,32.685726,-96.975261,5,4
+T900125,David Wilson,Equipment upgrade,Dallas,DALLAS,TX,32.564363,-96.960058,7,3
+T900126,Linda Rodriguez,Fiber ONT installation,Dallas,DALLAS,TX,32.823718,-96.975827,5,3
+T900127,Joseph Rodriguez,Line repair,Dallas,DALLAS,TX,32.704995,-97.011352,5,-3
+T900128,Barbara Lopez,Connectivity diagnosis,Dallas,DALLAS,TX,33.010546,-96.708578,5,3
+T900129,Richard Wilson,Fiber ONT installation,Dallas,DALLAS,TX,32.782682,-96.544221,7,5
+T900130,John Miller,Service migration,Dallas,DALLAS,TX,33.038661,-96.995588,8,4
+T900131,Mary Williams,Service restoration,Dallas,DALLAS,TX,32.607493,-96.755314,6,6
+T900132,Jessica Miller,Copper ONT installation,Dallas,DALLAS,TX,32.837434,-96.593307,7,1
+T900133,Elizabeth Smith,Network troubleshooting,Dallas,DALLAS,TX,32.640397,-96.53126,7,1
+T900134,David Wilson,Line repair,Dallas,DALLAS,TX,32.852153,-96.546252,6,0
+T900135,David Lopez,Network troubleshooting,Austin,AUSTIN,TX,30.051205,-97.935236,6,0
+T900136,Jennifer Wilson,Service restoration,Austin,AUSTIN,TX,30.281242,-97.972298,6,-1
+T900137,Patricia Garcia,Connectivity diagnosis,Austin,AUSTIN,TX,30.380197,-97.742271,7,1
+T900138,Joseph Garcia,Copper ONT installation,Austin,AUSTIN,TX,30.081575,-97.718629,6,1
+T900139,Elizabeth Miller,Connectivity diagnosis,Austin,AUSTIN,TX,30.170216,-97.765032,5,1
+T900140,Michael Brown,Fiber ONT installation,Austin,AUSTIN,TX,30.056616,-97.514672,6,0
+T900141,Jessica Davis,Network troubleshooting,Austin,AUSTIN,TX,30.009026,-97.572315,4,0
+T900142,Elizabeth Wilson,Line repair,Austin,AUSTIN,TX,30.373714,-97.484479,5,3
+T900143,William Smith,Equipment check,Austin,AUSTIN,TX,30.387052,-97.504497,7,2
+T900144,Patricia Martinez,Line repair,Austin,AUSTIN,TX,30.145427,-97.840123,8,-2
+T900145,John Smith,Service migration,Austin,AUSTIN,TX,30.042875,-97.828433,6,5
+T900146,John Davis,Copper ONT installation,Austin,AUSTIN,TX,30.227359,-97.488097,7,2
+T900147,David Lopez,Service restoration,Austin,AUSTIN,TX,30.354408,-97.918358,7,3
+T900148,William Jones,Fiber ONT installation,Austin,AUSTIN,TX,30.273837,-97.792547,5,1
+T900149,Barbara Johnson,Network support,Austin,AUSTIN,TX,30.475103,-98.001611,5,1
