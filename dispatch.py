@@ -121,6 +121,9 @@ class SmartDispatchAI:
         Returns:
             List of dispatch dictionaries
         """
+        import logging
+        logger = logging.getLogger(__name__)
+        
         sql = """
             SELECT * FROM current_dispatches 
             WHERE (Assigned_technician_id IS NULL OR Assigned_technician_id = '')
@@ -128,19 +131,43 @@ class SmartDispatchAI:
         params = []
         
         if city:
-            sql += " AND City = ?"
+            sql += " AND UPPER(TRIM(City)) = UPPER(TRIM(?))"
             params.append(city)
+            logger.debug(f"Filtering by city: {city}")
         if state:
-            sql += " AND State = ?"
+            sql += " AND UPPER(TRIM(State)) = UPPER(TRIM(?))"
             params.append(state)
+            logger.debug(f"Filtering by state: {state}")
         if date:
             sql += " AND DATE(Appointment_start_datetime) = ?"
             params.append(date)
+            logger.debug(f"Filtering by date: {date}")
         
         sql += " ORDER BY Priority DESC LIMIT ?"
         params.append(limit)
         
-        return self.db.query(sql, tuple(params) if params else None)
+        logger.debug(f"Executing query: {sql[:200]}... with params: {params}")
+        result = self.db.query(sql, tuple(params) if params else None)
+        logger.debug(f"Query returned {len(result) if result else 0} dispatches")
+        
+        # If no results with filters, check if there are any dispatches at all for debugging
+        if not result or len(result) == 0:
+            # Check total unassigned dispatches
+            total_unassigned = self.db.query(
+                "SELECT COUNT(*) as count FROM current_dispatches WHERE (Assigned_technician_id IS NULL OR Assigned_technician_id = '')",
+                None
+            )
+            logger.debug(f"Total unassigned dispatches in database: {total_unassigned[0]['count'] if total_unassigned else 0}")
+            
+            # Check dispatches for this date (without location filters)
+            if date:
+                date_count = self.db.query(
+                    "SELECT COUNT(*) as count FROM current_dispatches WHERE DATE(Appointment_start_datetime) = ?",
+                    (date,)
+                )
+                logger.debug(f"Total dispatches for date {date}: {date_count[0]['count'] if date_count else 0}")
+        
+        return result
     
     def get_technician_calendar(self, tech_id: Optional[str] = None,
                                 tech_name: Optional[str] = None,

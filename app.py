@@ -608,13 +608,17 @@ def api_auto_assign():
     # Get unassigned dispatches with filters
     unassigned = opt.get_unassigned_dispatches(limit=1000, city=city, state=state, date=date)
     
+    logger.info(f"Found {len(unassigned) if unassigned else 0} unassigned dispatches")
+    
     if not unassigned or len(unassigned) == 0:
+        message = f'No unassigned dispatches found for {date} with filters: State={state or "Any"}, City={city or "Any"}'
+        logger.info(message)
         return jsonify({
             'success': True,
             'results': {'total': 0, 'assigned': 0, 'unassigned': 0, 'assignments': [], 'unassignable': []},
             'statistics': {'total': 0, 'assigned': 0, 'unassigned': 0, 'success_rate': 0, 
                          'avg_score': 0, 'total_travel_time_min': 0, 'total_travel_time_hrs': 0},
-            'message': f'No unassigned dispatches found for {date} with filters: State={state or "Any"}, City={city or "Any"}'
+            'message': message
         })
     
     # Process dispatches
@@ -963,7 +967,7 @@ def api_update_dispatch():
         params.append(data['priority'])
     
     if 'customer_address' in data:
-        updates.append('Customer_address = ?')
+        updates.append('Street = ?')
         params.append(data['customer_address'])
     
     if 'city' in data:

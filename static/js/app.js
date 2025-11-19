@@ -728,6 +728,11 @@ async function runAutoAssign() {
             const results = data.results;
             const stats = data.statistics;
             
+            // Show message if provided (e.g., no dispatches found)
+            if (data.message) {
+                logMessage(data.message, results.total === 0 ? 'warning' : 'info');
+            }
+            
             // Store assignment data for commit
             state.autoAssignData = {
                 date: date,
@@ -2127,6 +2132,7 @@ function showAutoAssignModal(results, stats, date, stateValue, city) {
                 <i class="fas fa-inbox" style="font-size: 3rem; color: var(--color-text-muted); margin-bottom: 1rem;"></i>
                 <h4 style="margin: 0 0 0.5rem 0; color: var(--color-text);">No Dispatches Found</h4>
                 <p class="text-muted" style="margin: 0;">No unassigned dispatches found for the selected date and filters.</p>
+                <p class="text-muted" style="margin-top: 0.5rem; font-size: 0.9rem;">Try adjusting your date range or location filters.</p>
             </div>
         `;
         exportBtn.style.display = 'none';
@@ -2790,7 +2796,7 @@ function populateFormFromRow(rowIndex) {
 function populateDispatchForm(row) {
     // Populate Create Dispatch form
     // Handle various field name variations
-    const address = row.Customer_address || row.Address || row.address || row.customer_address;
+    const address = row.Street || row.Customer_address || row.Address || row.address || row.customer_address;
     if (address) {
         document.getElementById('createAddress').value = address;
     }
@@ -2959,7 +2965,7 @@ function showEditDispatchModal(row) {
     
     // Extract values with fallbacks
     const dispatchId = row.Dispatch_id || row.dispatch_id || '';
-    const address = row.Customer_address || row.Address || row.address || row.customer_address || '';
+    const address = row.Street || row.Customer_address || row.Address || row.address || row.customer_address || '';
     const city = row.City || row.city || '';
     const stateValue = row.State || row.state || '';
     const appointmentDt = row.Appointment_start_datetime || row.appointment_start_datetime || row.Appointment_datetime || row.appointment_datetime || '';
@@ -3799,13 +3805,41 @@ function checkInitialized() {
 }
 
 function clearAll() {
-    // Clear inputs
-    document.getElementById('techId').value = '';
-    document.getElementById('dispatchId').value = '';
-    document.getElementById('startDate').value = '';
-    document.getElementById('endDate').value = '';
-    document.getElementById('city').value = '';
-    document.getElementById('state').value = '';
+    // Clear inputs with null checks - Search Dispatches form fields
+    const dispatchIdEl = document.getElementById('dispatchId');
+    if (dispatchIdEl) dispatchIdEl.value = '';
+    
+    const dispatchStatusEl = document.getElementById('dispatchStatus');
+    if (dispatchStatusEl) dispatchStatusEl.value = '';
+    
+    const dispatchAssignmentEl = document.getElementById('dispatchAssignment');
+    if (dispatchAssignmentEl) dispatchAssignmentEl.value = '';
+    
+    const dispatchPriorityEl = document.getElementById('dispatchPriority');
+    if (dispatchPriorityEl) dispatchPriorityEl.value = '';
+    
+    const startDateEl = document.getElementById('startDate');
+    if (startDateEl) startDateEl.value = '';
+    
+    const endDateEl = document.getElementById('endDate');
+    if (endDateEl) endDateEl.value = '';
+    
+    const cityEl = document.getElementById('city');
+    if (cityEl) {
+        cityEl.value = '';
+        // Reset city dropdown to default
+        cityEl.innerHTML = '<option value="">-- All Cities --</option>';
+    }
+    
+    const stateEl = document.getElementById('state');
+    if (stateEl) {
+        stateEl.value = '';
+        // Reset state dropdown to default
+        stateEl.innerHTML = '<option value="">-- All States --</option>';
+    }
+    
+    const dispatchSkillEl = document.getElementById('dispatchSkill');
+    if (dispatchSkillEl) dispatchSkillEl.value = '';
     
     // Clear data
     state.currentData = [];
@@ -3814,13 +3848,16 @@ function clearAll() {
     
     // Clear displays
     clearMessages();
-    document.getElementById('gridContainer').innerHTML = `
-        <div class="empty-state">
-            <i class="fas fa-inbox"></i>
-            <p>No data to display</p>
-            <p class="text-muted">Run a query to see results</p>
-        </div>
-    `;
+    const gridContainer = document.getElementById('gridContainer');
+    if (gridContainer) {
+        gridContainer.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-inbox"></i>
+                <p>No data to display</p>
+                <p class="text-muted">Run a query to see results</p>
+            </div>
+        `;
+    }
     updateEditIndicator();
     
     logMessage('🧹 All fields cleared', 'success');

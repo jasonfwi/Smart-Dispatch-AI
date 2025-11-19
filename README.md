@@ -2,6 +2,8 @@
 
 AI-powered dispatch optimization system for managing technician assignments based on availability, location, and capacity constraints.
 
+> 📚 **For comprehensive documentation, see [DOCUMENTATION.md](DOCUMENTATION.md)**
+
 ## 🚀 Quick Start
 
 ### 1. Setup Environment
@@ -55,7 +57,14 @@ pytest -v
 pytest --cov=. --cov-report=html
 ```
 
-See [TESTING.md](TESTING.md) for comprehensive testing documentation.
+See [DOCUMENTATION.md](DOCUMENTATION.md) for comprehensive documentation including:
+- Complete API reference
+- Database schema details
+- Availability logic explanation
+- Testing guide
+- Calendar generation
+- Troubleshooting
+- And much more!
 
 ## ✨ Features
 
